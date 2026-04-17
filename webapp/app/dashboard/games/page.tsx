@@ -4,16 +4,17 @@ import { useState } from "react";
 import Link from "next/link";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { ArrowLeft02Icon, Search01Icon } from "@hugeicons/core-free-icons";
-import { useDashboard } from "../dashboard-context";
 import { games } from "../data/mock-games";
+import { GameCard } from "../components/game-card";
+import { GameDialog } from "../components/game-dialog";
+import type { Game } from "../types";
 
 const tags = Array.from(new Set(games.map((g) => g.tag)));
 
 export default function GamesPage() {
-  const { settings } = useDashboard();
-  const { glowEffects } = settings;
   const [search, setSearch] = useState("");
   const [activeTag, setActiveTag] = useState<string | null>(null);
+  const [selected, setSelected] = useState<Game | null>(null);
 
   const filtered = games.filter((g) => {
     const matchesSearch =
@@ -69,21 +70,7 @@ export default function GamesPage() {
 
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
           {filtered.map((game) => (
-            <button
-              key={game.name}
-              className="cursor-pointer group relative overflow-hidden rounded-xl bg-card ring-1 ring-border transition-all duration-300 hover:ring-primary/30 text-left"
-            >
-              <div className="h-20 w-full opacity-60 group-hover:opacity-80 transition-opacity duration-300" style={{ background: game.gradient }} />
-              <div className="absolute top-3 right-3 text-2xl opacity-70 group-hover:opacity-100 transition-opacity duration-300 drop-shadow-lg">{game.emoji}</div>
-              <div className="px-3.5 pb-3.5 pt-2.5">
-                <p className="text-sm font-bold truncate" style={{ color: game.accent, textShadow: glowEffects ? `0 0 8px ${game.accent}60` : undefined }}>{game.name}</p>
-                <p className="text-[11px] text-muted-foreground mt-0.5 line-clamp-2 leading-relaxed">{game.desc}</p>
-                <div className="flex items-center justify-between mt-2.5">
-                  <span className="text-[9px] uppercase tracking-wider font-medium px-1.5 py-0.5 rounded-full" style={{ color: game.accent, backgroundColor: `${game.accent}15` }}>{game.tag}</span>
-                  <span className="text-[10px] text-muted-foreground">{game.players}</span>
-                </div>
-              </div>
-            </button>
+            <GameCard key={game.name} game={game} size="large" onClick={() => setSelected(game)} />
           ))}
         </div>
 
@@ -91,6 +78,10 @@ export default function GamesPage() {
           <p className="text-center text-muted-foreground text-sm py-12">No games found</p>
         )}
       </div>
+
+      {selected && (
+        <GameDialog game={selected} open={!!selected} onOpenChange={(v) => { if (!v) setSelected(null); }} />
+      )}
     </main>
   );
 }
