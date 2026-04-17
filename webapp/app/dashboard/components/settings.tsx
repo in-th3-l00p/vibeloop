@@ -86,10 +86,8 @@ export function Settings({
             </TabsTrigger>
           </TabsList>
 
-          {/* ── Profile Tab ── */}
           <TabsContent value="profile" className="overflow-y-auto scrollbar-thin">
             <div className="px-5 pt-4 pb-5 space-y-4">
-              {/* User Info */}
               <div className="flex items-center gap-3 rounded-lg bg-white/[0.03] ring-1 ring-white/5 p-3">
                 <div className="relative size-10 shrink-0 rounded-full overflow-hidden ring-2 ring-white/20">
                   {imageUrl ? (
@@ -112,7 +110,6 @@ export function Settings({
                 </button>
               </div>
 
-              {/* Description */}
               <div>
                 <div className="flex items-center justify-between mb-2">
                   <p className="text-[10px] uppercase tracking-[0.2em] text-zinc-500">Description</p>
@@ -148,7 +145,6 @@ export function Settings({
                 )}
               </div>
 
-              {/* Card Theme */}
               <div>
                 <p className="text-[10px] uppercase tracking-[0.2em] text-zinc-500 mb-1">Card Theme</p>
                 <p className="text-[10px] text-zinc-600 mb-3">Choose how your profile card looks to everyone</p>
@@ -165,7 +161,6 @@ export function Settings({
                           active ? "ring-white/30" : "ring-white/5 hover:ring-white/15"
                         }`}
                       >
-                        {/* Mini preview */}
                         <div
                           className="flex items-center gap-3 px-3 py-2.5"
                           style={{
@@ -188,7 +183,6 @@ export function Settings({
                             <p className="text-[8px] uppercase" style={{ color: theme.labelColor }}>$VIBE</p>
                           </div>
                         </div>
-                        {/* Bottom bar */}
                         <div className="flex items-center justify-between px-3 py-1.5 bg-white/[0.02]">
                           <div className="flex items-center gap-2">
                             <span className="text-[10px] font-medium text-zinc-300">{theme.name}</span>
@@ -216,11 +210,9 @@ export function Settings({
             </div>
           </TabsContent>
 
-          {/* ── Appearance Tab ── */}
           <TabsContent value="appearance" className="overflow-y-auto scrollbar-thin">
             <div className="px-5 pt-4 pb-5 space-y-5">
 
-              {/* Welcome Title */}
               <div>
                 <p className="text-[10px] uppercase tracking-[0.2em] text-zinc-500 mb-1">Welcome Title</p>
                 <p className="text-[10px] text-zinc-600 mb-3">
@@ -235,7 +227,6 @@ export function Settings({
                 />
                 <p className="text-[10px] text-zinc-600 mb-2">Preview: <span className="text-muted-foreground">{resolveWelcomeText(settings.welcomeText, { firstName, username })}</span></p>
 
-                {/* Title Color */}
                 <p className="text-[10px] uppercase tracking-[0.2em] text-zinc-500 mb-2">Title Color</p>
                 <div className="flex flex-wrap gap-2">
                   {titleColorPresets.map((preset) => (
@@ -261,7 +252,6 @@ export function Settings({
                 </div>
               </div>
 
-              {/* Page Background */}
               <div>
                 <p className="text-[10px] uppercase tracking-[0.2em] text-zinc-500 mb-1">Page Background</p>
                 <p className="text-[10px] text-zinc-600 mb-3">Set the background color of the dashboard</p>
@@ -286,7 +276,6 @@ export function Settings({
                 </div>
               </div>
 
-              {/* UI Component Theme */}
               <div>
                 <p className="text-[10px] uppercase tracking-[0.2em] text-zinc-500 mb-1">UI Components</p>
                 <p className="text-[10px] text-zinc-600 mb-3">Theme for cards, buttons, and panels</p>
@@ -317,7 +306,6 @@ export function Settings({
                 </div>
               </div>
 
-              {/* Glow + Compact */}
               <div>
                 <p className="text-[10px] uppercase tracking-[0.2em] text-zinc-500 mb-2.5">Effects</p>
                 <div className="space-y-1">
@@ -332,7 +320,6 @@ export function Settings({
                 </div>
               </div>
 
-              {/* Section Visibility */}
               <div>
                 <p className="text-[10px] uppercase tracking-[0.2em] text-zinc-500 mb-2.5">Sections</p>
                 <div className="space-y-1">
@@ -350,7 +337,6 @@ export function Settings({
                 </div>
               </div>
 
-              {/* Reset */}
               <button
                 onClick={reset}
                 className="cursor-pointer w-full flex items-center justify-center gap-2 rounded-lg ring-1 ring-border px-3 py-2.5 text-muted-foreground transition-all duration-300 hover:text-white hover:bg-white/[0.03]"

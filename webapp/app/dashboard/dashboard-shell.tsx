@@ -7,8 +7,6 @@ function ShellInner({ children }: { children: ReactNode }) {
   const { settings } = useDashboard();
   const t = getTheme(settings);
 
-  // Override shadcn CSS variables so all components (Dialog, Sheet, Command,
-  // Card, Tabs, Switch, etc.) inherit the active UI theme automatically.
   return (
     <div
       style={{

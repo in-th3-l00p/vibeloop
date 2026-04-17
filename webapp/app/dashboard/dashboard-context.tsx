@@ -8,21 +8,20 @@ import {
   type ReactNode,
 } from "react";
 
-// ── Profile Card Themes (purchasable from store) ──
 
 export interface ProfileCardTheme {
   id: string;
   name: string;
-  nameBg: string;        // card background
-  nameColor: string;     // name text color
-  tagColor: string;      // @username color
-  descColor: string;     // description color
-  statColor: string;     // stat numbers color
-  labelColor: string;    // stat labels color
-  borderColor: string;   // card border / ring
-  avatarRing: string;    // ring around avatar
-  divider: string;       // divider between sections
-  price: number;         // 0 = free / default
+  nameBg: string;
+  nameColor: string;
+  tagColor: string;
+  descColor: string;
+  statColor: string;
+  labelColor: string;
+  borderColor: string;
+  avatarRing: string;
+  divider: string;
+  price: number;
   rarity: "free" | "common" | "uncommon" | "rare" | "epic" | "legendary";
 }
 
@@ -134,7 +133,6 @@ export const profileCardThemes: ProfileCardTheme[] = [
   },
 ];
 
-// ── UI Component Themes ──
 
 export interface UiTheme {
   name: string;
@@ -151,7 +149,6 @@ export const uiThemes: UiTheme[] = [
   { name: "Void",     cardBg: "#09090b", cardRing: "rgba(255,255,255,0.04)", textMuted: "#71717a" },
 ];
 
-// ── Page Backgrounds ──
 
 export const pageBgPresets = [
   { name: "Default",  value: "#030712" },
@@ -164,7 +161,6 @@ export const pageBgPresets = [
   { name: "Plum",     value: "#0d0515" },
 ];
 
-// ── Title Color Presets ──
 
 export const titleColorPresets = [
   { name: "White",   value: "#ffffff" },
@@ -178,17 +174,12 @@ export const titleColorPresets = [
   { name: "Lavender",value: "#a78bfa" },
 ];
 
-// ── Settings Model ──
-
 export interface DashboardSettings {
-  // Profile
-  profileCardTheme: string; // id into profileCardThemes
-  // Appearance
-  welcomeText: string;      // supports {{first_name}}, {{username}}
+  profileCardTheme: string;
+  welcomeText: string;
   titleColor: string;
   pageBg: string;
-  uiTheme: number;          // index into uiThemes
-  // Interface
+  uiTheme: number;
   showWelcome: boolean;
   showLobby: boolean;
   showGames: boolean;
@@ -211,7 +202,6 @@ const defaults: DashboardSettings = {
   glowEffects: true,
 };
 
-// ── Helpers ──
 
 export function getProfileCard(settings: DashboardSettings): ProfileCardTheme {
   return profileCardThemes.find((t) => t.id === settings.profileCardTheme) ?? profileCardThemes[0];
@@ -237,7 +227,6 @@ export function resolveWelcomeText(
     .replace(/\{\{username\}\}/g, vars.username);
 }
 
-// ── Context ──
 
 interface DashboardContextValue {
   settings: DashboardSettings;
