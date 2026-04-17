@@ -8,6 +8,7 @@ import { useDashboard } from "../dashboard-context";
 import { SectionHeader } from "../components/ui/section-header";
 import { ScrollRow } from "../components/ui/scroll-row";
 import { StatusDot, StatusLabel } from "../components/ui/status-indicator";
+import { InviteDialog } from "../components/invite-dialog";
 import { lobbyPlayers, lobbyMessages } from "../data/mock-players";
 
 export function Lobby() {
@@ -52,9 +53,11 @@ export function Lobby() {
               </div>
             </SheetContent>
           </Sheet>
-          <button className="cursor-pointer text-[10px] uppercase tracking-wider text-muted-foreground rounded-md px-2.5 py-1 bg-card ring-1 ring-border transition-all duration-300 hover:text-white">
-            + Add
-          </button>
+          <InviteDialog>
+            <button className="cursor-pointer text-[10px] uppercase tracking-wider text-muted-foreground rounded-md px-2.5 py-1 bg-card ring-1 ring-border transition-all duration-300 hover:text-white">
+              + Invite
+            </button>
+          </InviteDialog>
         </div>
       </div>
 
