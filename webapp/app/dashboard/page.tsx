@@ -85,6 +85,117 @@ export default async function Dashboard() {
       </div>
 
       <Lobby />
+
+      <div className="w-full max-w-xl mt-6">
+        <div className="flex items-center justify-between mb-3">
+          <p className="text-[11px] uppercase tracking-[0.3em] text-zinc-500">Games</p>
+          <button className="cursor-pointer text-[10px] uppercase tracking-wider text-zinc-500 ring-1 ring-white/10 rounded-md px-2.5 py-1 bg-zinc-900/80 shadow-[0_0_10px_rgba(255,255,255,0.04)] transition-all duration-300 hover:text-white hover:shadow-[0_0_20px_rgba(255,255,255,0.12)]">
+            View All
+          </button>
+        </div>
+
+        <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-thin">
+          {[
+            {
+              name: "Vibecheck",
+              desc: "Vote on hot takes. Majority wins.",
+              players: "2–10",
+              tag: "party",
+              accent: "#a855f7",
+              gradient: "linear-gradient(135deg, #6d28d9, #db2777)",
+              emoji: "🔥",
+            },
+            {
+              name: "Drawl",
+              desc: "Sketch prompts. Friends guess blind.",
+              players: "3–8",
+              tag: "creative",
+              accent: "#22d3ee",
+              gradient: "linear-gradient(135deg, #0ea5e9, #06b6d4)",
+              emoji: "🎨",
+            },
+            {
+              name: "Bluff Royale",
+              desc: "Lie your way to victory. Trust no one.",
+              players: "4–10",
+              tag: "strategy",
+              accent: "#f97316",
+              gradient: "linear-gradient(135deg, #f97316, #ef4444)",
+              emoji: "🃏",
+            },
+            {
+              name: "Wavelength",
+              desc: "Guess where your friend lands on the spectrum.",
+              players: "2–8",
+              tag: "social",
+              accent: "#34d399",
+              gradient: "linear-gradient(135deg, #10b981, #059669)",
+              emoji: "📡",
+            },
+            {
+              name: "Speed Trivia",
+              desc: "First to buzz wins. No second chances.",
+              players: "2–12",
+              tag: "trivia",
+              accent: "#fbbf24",
+              gradient: "linear-gradient(135deg, #f59e0b, #eab308)",
+              emoji: "⚡",
+            },
+            {
+              name: "Conspirators",
+              desc: "Find the traitor before it's too late.",
+              players: "5–10",
+              tag: "deception",
+              accent: "#f43f5e",
+              gradient: "linear-gradient(135deg, #e11d48, #9f1239)",
+              emoji: "🕵️",
+            },
+          ].map((game) => (
+            <button
+              key={game.name}
+              className="cursor-pointer group relative shrink-0 w-44 overflow-hidden rounded-xl ring-1 ring-white/10 bg-zinc-900/80 shadow-[0_0_12px_rgba(255,255,255,0.04)] transition-all duration-300 hover:shadow-[0_0_25px_rgba(255,255,255,0.12)] text-left"
+            >
+              <div
+                className="h-14 w-full opacity-60 group-hover:opacity-80 transition-opacity duration-300"
+                style={{ background: game.gradient }}
+              />
+              <div className="absolute top-2.5 right-3 text-xl opacity-70 group-hover:opacity-100 transition-opacity duration-300 drop-shadow-lg">
+                {game.emoji}
+              </div>
+
+              <div className="px-3.5 pb-3.5 pt-2.5">
+                <p
+                  className="text-sm font-bold truncate"
+                  style={{
+                    color: game.accent,
+                    textShadow: `0 0 8px ${game.accent}60`,
+                  }}
+                >
+                  {game.name}
+                </p>
+                <p className="text-[11px] text-zinc-400 mt-0.5 line-clamp-2 leading-relaxed">
+                  {game.desc}
+                </p>
+
+                <div className="flex items-center justify-between mt-2.5">
+                  <span
+                    className="text-[9px] uppercase tracking-wider font-medium px-1.5 py-0.5 rounded-full"
+                    style={{
+                      color: game.accent,
+                      backgroundColor: `${game.accent}15`,
+                    }}
+                  >
+                    {game.tag}
+                  </span>
+                  <span className="text-[10px] text-zinc-600">
+                    {game.players}
+                  </span>
+                </div>
+              </div>
+            </button>
+          ))}
+        </div>
+      </div>
     </main>
   );
 }
