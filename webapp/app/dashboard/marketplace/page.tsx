@@ -4,20 +4,20 @@ import { useState } from "react";
 import Link from "next/link";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { ArrowLeft02Icon, Search01Icon } from "@hugeicons/core-free-icons";
-import type { MarketplaceItem } from "../types";
-import { useDashboard } from "../dashboard-context";
 import { rarityColors } from "../lib/constants";
 import { marketplaceItems } from "../data/mock-marketplace";
+import { ItemCard } from "../components/item-card";
+import { ProductDialog } from "../components/product-dialog";
+import type { MarketplaceItem } from "../types";
 
 const types = Array.from(new Set(marketplaceItems.map((i) => i.type)));
 const rarities = Array.from(new Set(marketplaceItems.map((i) => i.rarity)));
 
 export default function MarketplacePage() {
-  const { settings } = useDashboard();
-  const { glowEffects } = settings;
   const [search, setSearch] = useState("");
   const [activeType, setActiveType] = useState<string | null>(null);
   const [activeRarity, setActiveRarity] = useState<string | null>(null);
+  const [selected, setSelected] = useState<MarketplaceItem | null>(null);
 
   const filtered = marketplaceItems.filter((item) => {
     const matchesSearch = item.name.toLowerCase().includes(search.toLowerCase());
@@ -91,7 +91,7 @@ export default function MarketplacePage() {
 
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
           {filtered.map((item) => (
-            <ItemCard key={item.slug} item={item} glowEffects={glowEffects} />
+            <ItemCard key={item.slug} item={item} size="large" onClick={() => setSelected(item)} />
           ))}
         </div>
 
@@ -99,28 +99,10 @@ export default function MarketplacePage() {
           <p className="text-center text-muted-foreground text-sm py-12">No items found</p>
         )}
       </div>
-    </main>
-  );
-}
 
-function ItemCard({ item, glowEffects }: { item: MarketplaceItem; glowEffects: boolean }) {
-  const rc = rarityColors[item.rarity];
-  return (
-    <Link
-      href={`/dashboard/marketplace/${item.slug}`}
-      className="group relative overflow-hidden rounded-xl bg-card ring-1 ring-border transition-all duration-300 hover:ring-primary/30 text-left block"
-    >
-      <div className="h-24 w-full opacity-50 group-hover:opacity-75 transition-opacity duration-300 flex items-center justify-center" style={{ background: item.gradient }}>
-        <span className="text-[9px] uppercase tracking-wider font-bold px-2 py-0.5 rounded-full backdrop-blur-sm" style={{ color: rc, backgroundColor: `${rc}20`, border: `1px solid ${rc}40` }}>{item.rarity}</span>
-      </div>
-      <div className="px-3 pb-3 pt-2">
-        <p className="text-xs font-bold truncate" style={{ color: item.accent, textShadow: glowEffects ? `0 0 8px ${item.accent}60` : undefined }}>{item.name}</p>
-        <p className="text-[10px] text-muted-foreground truncate">{item.type}</p>
-        <div className="flex items-center justify-between mt-2">
-          <span className="text-[11px] font-bold text-foreground">{item.price}</span>
-          <span className="text-[9px] text-muted-foreground uppercase tracking-wider">$VIBE</span>
-        </div>
-      </div>
-    </Link>
+      {selected && (
+        <ProductDialog item={selected} open={!!selected} onOpenChange={(v) => { if (!v) setSelected(null); }} />
+      )}
+    </main>
   );
 }
