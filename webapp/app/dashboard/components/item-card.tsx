@@ -1,5 +1,6 @@
 "use client";
 
+import { motion } from "motion/react";
 import { useDashboard } from "../dashboard-context";
 import { rarityColors } from "../lib/constants";
 import type { MarketplaceItem } from "../types";
@@ -23,9 +24,12 @@ export function ItemCard({
   const shrinkClass = size === "large" ? "" : "shrink-0";
 
   return (
-    <button
+    <motion.button
       onClick={onClick}
-      className={`cursor-pointer group relative ${shrinkClass} ${widthClass} overflow-hidden rounded-xl bg-card ring-1 ring-border transition-all duration-300 hover:ring-primary/30 text-left`}
+      whileHover={{ y: -3 }}
+      whileTap={{ scale: 0.97 }}
+      transition={{ duration: 0.2, ease: [0.25, 1, 0.5, 1] }}
+      className={`cursor-pointer group relative ${shrinkClass} ${widthClass} overflow-hidden rounded-xl bg-card ring-1 ring-border transition-[box-shadow,ring-color] duration-300 hover:ring-primary/30 text-left`}
     >
       <div
         className={`${heightClass} w-full opacity-50 group-hover:opacity-75 transition-opacity duration-300 flex items-center justify-center`}
@@ -51,6 +55,6 @@ export function ItemCard({
           <span className="text-[9px] text-muted-foreground uppercase tracking-wider">$VIBE</span>
         </div>
       </div>
-    </button>
+    </motion.button>
   );
 }

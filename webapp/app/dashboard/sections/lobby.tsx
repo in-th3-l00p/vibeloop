@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Image from "next/image";
+import { motion } from "motion/react";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { BubbleChatIcon } from "@hugeicons/core-free-icons";
 import { Sheet, SheetTrigger, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
@@ -66,10 +67,13 @@ export function Lobby() {
 
       <ScrollRow>
         {lobbyPlayers.map((player) => (
-          <button
+          <motion.button
             key={player.name}
             onClick={() => setSelected(player)}
-            className={`cursor-pointer group relative shrink-0 ${cardW} rounded-xl overflow-hidden bg-card ring-1 ring-border transition-all duration-300 text-left`}
+            whileHover={{ y: -3 }}
+            whileTap={{ scale: 0.97 }}
+            transition={{ duration: 0.2, ease: [0.25, 1, 0.5, 1] }}
+            className={`cursor-pointer group relative shrink-0 ${cardW} rounded-xl overflow-hidden bg-card ring-1 ring-border transition-[box-shadow,ring-color] duration-300 text-left`}
           >
             <div className={`${compactMode ? "h-12" : "h-16"} w-full`} style={{ background: player.banner }} />
             <div className="relative px-3 pb-3">
@@ -89,7 +93,7 @@ export function Lobby() {
                 <StatusLabel status={player.status as "ready" | "idle"} />
               </div>
             </div>
-          </button>
+          </motion.button>
         ))}
         <div className={`group relative shrink-0 ${cardW} rounded-xl overflow-hidden bg-card ring-1 ring-border transition-all duration-300 opacity-40`}>
           <div className="flex flex-col items-center justify-center h-full min-h-[148px]">

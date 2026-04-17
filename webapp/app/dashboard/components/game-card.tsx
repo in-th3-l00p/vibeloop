@@ -1,5 +1,6 @@
 "use client";
 
+import { motion } from "motion/react";
 import { useDashboard } from "../dashboard-context";
 import type { Game } from "../types";
 
@@ -22,9 +23,12 @@ export function GameCard({
   const emojiSize = size === "large" ? "text-2xl" : "text-xl";
 
   return (
-    <button
+    <motion.button
       onClick={onClick}
-      className={`cursor-pointer group relative ${shrinkClass} ${widthClass} overflow-hidden rounded-xl bg-card ring-1 ring-border transition-all duration-300 hover:ring-primary/30 text-left`}
+      whileHover={{ y: -3 }}
+      whileTap={{ scale: 0.97 }}
+      transition={{ duration: 0.2, ease: [0.25, 1, 0.5, 1] }}
+      className={`cursor-pointer group relative ${shrinkClass} ${widthClass} overflow-hidden rounded-xl bg-card ring-1 ring-border transition-[box-shadow,ring-color] duration-300 hover:ring-primary/30 text-left`}
     >
       <div className={`${bannerH} w-full opacity-60 group-hover:opacity-80 transition-opacity duration-300`} style={{ background: game.gradient }} />
       <div className={`absolute top-2.5 right-3 ${emojiSize} opacity-70 group-hover:opacity-100 transition-opacity duration-300 drop-shadow-lg`}>{game.emoji}</div>
@@ -36,6 +40,6 @@ export function GameCard({
           <span className="text-[10px] text-muted-foreground">{game.players}</span>
         </div>
       </div>
-    </button>
+    </motion.button>
   );
 }
