@@ -3,75 +3,33 @@
 import { useState } from "react";
 import { useClerk } from "@clerk/nextjs";
 import { HugeiconsIcon } from "@hugeicons/react";
-import {
-  Settings01Icon,
-  UserIcon,
-  PencilEdit01Icon,
-  ColorsIcon,
-  Tick02Icon,
-  ArrowTurnBackwardIcon,
-} from "@hugeicons/core-free-icons";
-import {
-  Dialog,
-  DialogTrigger,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-} from "@/components/ui/dialog";
+import { Settings01Icon, UserIcon, PencilEdit01Icon, ColorsIcon, Tick02Icon, ArrowTurnBackwardIcon } from "@hugeicons/core-free-icons";
+import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Switch } from "@/components/ui/switch";
-import {
-  useDashboard,
-  getProfileCard,
-  profileCardThemes,
-  uiThemes,
-  pageBgPresets,
-  titleColorPresets,
-  resolveWelcomeText,
-} from "../dashboard-context";
+import { useDashboard } from "../dashboard-context";
+import { getProfileCard, resolveWelcomeText } from "../lib/theme-utils";
+import { rarityColors } from "../lib/constants";
+import { profileCardThemes, uiThemes, pageBgPresets, titleColorPresets } from "../data/theme-presets";
+import { ActionButton } from "./ui/action-button";
+import { SettingsToggle } from "./ui/settings-toggle";
 
-const rarityColor: Record<string, string> = {
-  free: "#a1a1aa",
-  common: "#a1a1aa",
-  uncommon: "#22d3ee",
-  rare: "#a855f7",
-  epic: "#f43f5e",
-  legendary: "#fbbf24",
-};
-
-export function Settings({
-  username,
-  fullName,
-  imageUrl,
-}: {
-  username: string;
-  fullName: string;
-  imageUrl: string;
-}) {
+export function Settings() {
   const { openUserProfile } = useClerk();
-  const { settings, update, reset } = useDashboard();
+  const { settings, user, update, reset } = useDashboard();
   const pc = getProfileCard(settings);
   const [description, setDescription] = useState("No description yet.");
   const [editingDesc, setEditingDesc] = useState(false);
   const [draftDesc, setDraftDesc] = useState(description);
 
-  const firstName = fullName.split(" ")[0];
-
   return (
     <Dialog>
       <DialogTrigger asChild>
-        <button className="cursor-pointer flex flex-col items-center gap-2 rounded-lg bg-card ring-1 ring-border py-4 text-muted-foreground transition-all duration-300 hover:text-white">
-          <HugeiconsIcon icon={Settings01Icon} size={22} />
-          <span className="text-[11px] uppercase tracking-wider">Settings</span>
-        </button>
+        <ActionButton icon={Settings01Icon} label="Settings" />
       </DialogTrigger>
       <DialogContent className="sm:max-w-md !p-0 gap-0 max-h-[85vh] overflow-hidden flex flex-col">
         <DialogHeader className="px-5 pt-5 pb-0 shrink-0">
           <DialogTitle className="text-white text-sm font-semibold">Settings</DialogTitle>
-          <DialogDescription className="text-zinc-500 text-xs">
-            Manage your profile and customize your dashboard
-          </DialogDescription>
+          <DialogDescription className="text-zinc-500 text-xs">Manage your profile and customize your dashboard</DialogDescription>
         </DialogHeader>
 
         <Tabs defaultValue="profile" className="gap-0 min-h-0 flex flex-col flex-1">
@@ -90,17 +48,15 @@ export function Settings({
             <div className="px-5 pt-4 pb-5 space-y-4">
               <div className="flex items-center gap-3 rounded-lg bg-white/[0.03] ring-1 ring-white/5 p-3">
                 <div className="relative size-10 shrink-0 rounded-full overflow-hidden ring-2 ring-white/20">
-                  {imageUrl ? (
-                    <img src={imageUrl} alt={fullName} className="size-full object-cover" />
+                  {user.imageUrl ? (
+                    <img src={user.imageUrl} alt={user.fullName} className="size-full object-cover" />
                   ) : (
-                    <div className="size-full bg-zinc-700 flex items-center justify-center text-sm font-bold">
-                      {fullName.charAt(0)}
-                    </div>
+                    <div className="size-full bg-zinc-700 flex items-center justify-center text-sm font-bold">{user.fullName.charAt(0)}</div>
                   )}
                 </div>
                 <div className="min-w-0 flex-1">
-                  <p className="text-sm font-semibold text-white truncate">{fullName}</p>
-                  <p className="text-[10px] text-zinc-500 truncate">@{username}</p>
+                  <p className="text-sm font-semibold text-white truncate">{user.fullName}</p>
+                  <p className="text-[10px] text-zinc-500 truncate">@{user.username}</p>
                 </div>
                 <button
                   onClick={() => openUserProfile()}
@@ -114,24 +70,14 @@ export function Settings({
                 <div className="flex items-center justify-between mb-2">
                   <p className="text-[10px] uppercase tracking-[0.2em] text-zinc-500">Description</p>
                   {!editingDesc && (
-                    <button
-                      onClick={() => { setDraftDesc(description); setEditingDesc(true); }}
-                      className="cursor-pointer text-zinc-500 hover:text-white transition-colors"
-                    >
+                    <button onClick={() => { setDraftDesc(description); setEditingDesc(true); }} className="cursor-pointer text-zinc-500 hover:text-white transition-colors">
                       <HugeiconsIcon icon={PencilEdit01Icon} size={12} />
                     </button>
                   )}
                 </div>
                 {editingDesc ? (
                   <div className="space-y-2">
-                    <textarea
-                      value={draftDesc}
-                      onChange={(e) => setDraftDesc(e.target.value.slice(0, 120))}
-                      rows={2}
-                      className="w-full rounded-lg bg-card ring-1 ring-border px-3 py-2 text-sm text-white placeholder:text-zinc-600 outline-none focus:ring-white/20 resize-none"
-                      placeholder="Tell people about yourself..."
-                      autoFocus
-                    />
+                    <textarea value={draftDesc} onChange={(e) => setDraftDesc(e.target.value.slice(0, 120))} rows={2} className="w-full rounded-lg bg-card ring-1 ring-border px-3 py-2 text-sm text-white placeholder:text-zinc-600 outline-none focus:ring-white/20 resize-none" placeholder="Tell people about yourself..." autoFocus />
                     <div className="flex items-center justify-between">
                       <span className="text-[10px] text-zinc-600">{draftDesc.length}/120</span>
                       <div className="flex gap-2">
@@ -148,35 +94,21 @@ export function Settings({
               <div>
                 <p className="text-[10px] uppercase tracking-[0.2em] text-zinc-500 mb-1">Card Theme</p>
                 <p className="text-[10px] text-zinc-600 mb-3">Choose how your profile card looks to everyone</p>
-
                 <div className="space-y-2">
                   {profileCardThemes.map((theme) => {
                     const active = settings.profileCardTheme === theme.id;
-                    const rc = rarityColor[theme.rarity];
+                    const rc = rarityColors[theme.rarity];
                     return (
                       <button
                         key={theme.id}
                         onClick={() => update("profileCardTheme", theme.id)}
-                        className={`cursor-pointer w-full rounded-xl overflow-hidden transition-all duration-200 ring-1 text-left ${
-                          active ? "ring-white/30" : "ring-white/5 hover:ring-white/15"
-                        }`}
+                        className={`cursor-pointer w-full rounded-xl overflow-hidden transition-all duration-200 ring-1 text-left ${active ? "ring-white/30" : "ring-white/5 hover:ring-white/15"}`}
                       >
-                        <div
-                          className="flex items-center gap-3 px-3 py-2.5"
-                          style={{
-                            backgroundColor: theme.nameBg,
-                            borderBottom: `1px solid ${theme.borderColor}`,
-                          }}
-                        >
-                          <div
-                            className="size-7 rounded-full shrink-0 bg-zinc-700 flex items-center justify-center text-[10px] font-bold"
-                            style={{ outline: `2px solid ${theme.avatarRing}`, color: theme.nameColor }}
-                          >
-                            {fullName.charAt(0)}
-                          </div>
+                        <div className="flex items-center gap-3 px-3 py-2.5" style={{ backgroundColor: theme.nameBg, borderBottom: `1px solid ${theme.borderColor}` }}>
+                          <div className="size-7 rounded-full shrink-0 bg-zinc-700 flex items-center justify-center text-[10px] font-bold" style={{ outline: `2px solid ${theme.avatarRing}`, color: theme.nameColor }}>{user.fullName.charAt(0)}</div>
                           <div className="min-w-0 flex-1">
-                            <p className="text-xs font-bold truncate" style={{ color: theme.nameColor }}>{fullName}</p>
-                            <p className="text-[9px] truncate" style={{ color: theme.tagColor }}>@{username}</p>
+                            <p className="text-xs font-bold truncate" style={{ color: theme.nameColor }}>{user.fullName}</p>
+                            <p className="text-[9px] truncate" style={{ color: theme.tagColor }}>@{user.username}</p>
                           </div>
                           <div className="shrink-0 text-right">
                             <p className="text-[10px] font-bold" style={{ color: theme.statColor }}>0.00</p>
@@ -186,20 +118,11 @@ export function Settings({
                         <div className="flex items-center justify-between px-3 py-1.5 bg-white/[0.02]">
                           <div className="flex items-center gap-2">
                             <span className="text-[10px] font-medium text-zinc-300">{theme.name}</span>
-                            <span
-                              className="text-[8px] uppercase tracking-wider font-bold px-1.5 py-0.5 rounded-full"
-                              style={{ color: rc, backgroundColor: `${rc}15` }}
-                            >
-                              {theme.rarity}
-                            </span>
+                            <span className="text-[8px] uppercase tracking-wider font-bold px-1.5 py-0.5 rounded-full" style={{ color: rc, backgroundColor: `${rc}15` }}>{theme.rarity}</span>
                           </div>
                           <div className="flex items-center gap-1.5">
-                            {theme.price > 0 && (
-                              <span className="text-[9px] text-zinc-500">{theme.price} $VIBE</span>
-                            )}
-                            {active && (
-                              <HugeiconsIcon icon={Tick02Icon} size={12} className="text-white" strokeWidth={2} />
-                            )}
+                            {theme.price > 0 && <span className="text-[9px] text-zinc-500">{theme.price} $VIBE</span>}
+                            {active && <HugeiconsIcon icon={Tick02Icon} size={12} className="text-white" strokeWidth={2} />}
                           </div>
                         </div>
                       </button>
@@ -212,12 +135,9 @@ export function Settings({
 
           <TabsContent value="appearance" className="overflow-y-auto scrollbar-thin">
             <div className="px-5 pt-4 pb-5 space-y-5">
-
               <div>
                 <p className="text-[10px] uppercase tracking-[0.2em] text-zinc-500 mb-1">Welcome Title</p>
-                <p className="text-[10px] text-zinc-600 mb-3">
-                  Use {"{{first_name}}"} or {"{{username}}"} as variables
-                </p>
+                <p className="text-[10px] text-zinc-600 mb-3">Use {"{{first_name}}"} or {"{{username}}"} as variables</p>
                 <input
                   type="text"
                   value={settings.welcomeText}
@@ -225,7 +145,7 @@ export function Settings({
                   className="w-full rounded-lg bg-card ring-1 ring-border px-3 py-2 text-sm text-white placeholder:text-zinc-600 outline-none focus:ring-white/20 mb-2"
                   placeholder="Welcome, {{first_name}}"
                 />
-                <p className="text-[10px] text-zinc-600 mb-2">Preview: <span className="text-muted-foreground">{resolveWelcomeText(settings.welcomeText, { firstName, username })}</span></p>
+                <p className="text-[10px] text-zinc-600 mb-2">Preview: <span className="text-muted-foreground">{resolveWelcomeText(settings.welcomeText, { firstName: user.firstName, username: user.username })}</span></p>
 
                 <p className="text-[10px] uppercase tracking-[0.2em] text-zinc-500 mb-2">Title Color</p>
                 <div className="flex flex-wrap gap-2">
@@ -243,9 +163,7 @@ export function Settings({
                       title={preset.name}
                     >
                       {settings.titleColor === preset.value && (
-                        <HugeiconsIcon icon={Tick02Icon} size={10} className="absolute inset-0 m-auto text-black drop-shadow-md" strokeWidth={3}
-                          style={{ color: preset.value === "#ffffff" ? "#000" : "#fff" }}
-                        />
+                        <HugeiconsIcon icon={Tick02Icon} size={10} className="absolute inset-0 m-auto drop-shadow-md" strokeWidth={3} style={{ color: preset.value === "#ffffff" ? "#000" : "#fff" }} />
                       )}
                     </button>
                   ))}
@@ -260,16 +178,9 @@ export function Settings({
                     <button
                       key={preset.value}
                       onClick={() => update("pageBg", preset.value)}
-                      className={`cursor-pointer flex items-center gap-2 rounded-lg px-3 py-2 transition-all duration-200 ring-1 ${
-                        settings.pageBg === preset.value
-                          ? "ring-white/30 bg-white/[0.05]"
-                          : "ring-white/5 bg-white/[0.02] hover:bg-white/[0.04]"
-                      }`}
+                      className={`cursor-pointer flex items-center gap-2 rounded-lg px-3 py-2 transition-all duration-200 ring-1 ${settings.pageBg === preset.value ? "ring-white/30 bg-white/[0.05]" : "ring-white/5 bg-white/[0.02] hover:bg-white/[0.04]"}`}
                     >
-                      <div
-                        className="size-5 rounded shrink-0 ring-1 ring-border"
-                        style={{ backgroundColor: preset.value }}
-                      />
+                      <div className="size-5 rounded shrink-0 ring-1 ring-border" style={{ backgroundColor: preset.value }} />
                       <span className="text-[10px] text-zinc-300">{preset.name}</span>
                     </button>
                   ))}
@@ -284,23 +195,11 @@ export function Settings({
                     <button
                       key={theme.name}
                       onClick={() => update("uiTheme", i)}
-                      className={`cursor-pointer w-full flex items-center gap-3 rounded-lg px-3 py-2.5 transition-all duration-200 ring-1 ${
-                        settings.uiTheme === i
-                          ? "ring-white/20 bg-white/[0.05]"
-                          : "ring-white/5 bg-white/[0.02] hover:bg-white/[0.04]"
-                      }`}
+                      className={`cursor-pointer w-full flex items-center gap-3 rounded-lg px-3 py-2.5 transition-all duration-200 ring-1 ${settings.uiTheme === i ? "ring-white/20 bg-white/[0.05]" : "ring-white/5 bg-white/[0.02] hover:bg-white/[0.04]"}`}
                     >
-                      <div
-                        className="size-8 rounded-md shrink-0"
-                        style={{
-                          backgroundColor: theme.cardBg,
-                          boxShadow: `inset 0 0 0 1px ${theme.cardRing}`,
-                        }}
-                      />
+                      <div className="size-8 rounded-md shrink-0" style={{ backgroundColor: theme.cardBg, boxShadow: `inset 0 0 0 1px ${theme.cardRing}` }} />
                       <span className="text-xs font-medium text-zinc-300 flex-1 text-left">{theme.name}</span>
-                      {settings.uiTheme === i && (
-                        <HugeiconsIcon icon={Tick02Icon} size={14} className="text-white shrink-0" strokeWidth={2} />
-                      )}
+                      {settings.uiTheme === i && <HugeiconsIcon icon={Tick02Icon} size={14} className="text-white shrink-0" strokeWidth={2} />}
                     </button>
                   ))}
                 </div>
@@ -309,14 +208,8 @@ export function Settings({
               <div>
                 <p className="text-[10px] uppercase tracking-[0.2em] text-zinc-500 mb-2.5">Effects</p>
                 <div className="space-y-1">
-                  <label className="flex items-center justify-between rounded-lg bg-white/[0.03] ring-1 ring-white/5 px-3 py-2.5 cursor-pointer hover:bg-white/[0.05] transition-colors">
-                    <div><p className="text-xs font-medium text-zinc-200">Glow Effects</p><p className="text-[10px] text-zinc-500 mt-0.5">Neon glows on text, borders, and shadows</p></div>
-                    <Switch checked={settings.glowEffects} onCheckedChange={(v) => update("glowEffects", v)} className="shrink-0 ml-3" />
-                  </label>
-                  <label className="flex items-center justify-between rounded-lg bg-white/[0.03] ring-1 ring-white/5 px-3 py-2.5 cursor-pointer hover:bg-white/[0.05] transition-colors">
-                    <div><p className="text-xs font-medium text-zinc-200">Compact Mode</p><p className="text-[10px] text-zinc-500 mt-0.5">Reduce card sizes and spacing</p></div>
-                    <Switch checked={settings.compactMode} onCheckedChange={(v) => update("compactMode", v)} className="shrink-0 ml-3" />
-                  </label>
+                  <SettingsToggle label="Glow Effects" description="Neon glows on text, borders, and shadows" checked={settings.glowEffects} onCheckedChange={(v) => update("glowEffects", v)} />
+                  <SettingsToggle label="Compact Mode" description="Reduce card sizes and spacing" checked={settings.compactMode} onCheckedChange={(v) => update("compactMode", v)} />
                 </div>
               </div>
 
@@ -329,10 +222,7 @@ export function Settings({
                     { key: "showGames" as const, label: "Games" },
                     { key: "showMarketplace" as const, label: "Marketplace" },
                   ]).map((s) => (
-                    <label key={s.key} className="flex items-center justify-between rounded-lg bg-white/[0.03] ring-1 ring-white/5 px-3 py-2 cursor-pointer hover:bg-white/[0.05] transition-colors">
-                      <p className="text-xs font-medium text-zinc-200">{s.label}</p>
-                      <Switch checked={settings[s.key]} onCheckedChange={(v) => update(s.key, v)} className="shrink-0 ml-3" />
-                    </label>
+                    <SettingsToggle key={s.key} label={s.label} checked={settings[s.key]} onCheckedChange={(v) => update(s.key, v)} />
                   ))}
                 </div>
               </div>

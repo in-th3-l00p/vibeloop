@@ -3,37 +3,17 @@
 import Image from "next/image";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { BubbleChatIcon } from "@hugeicons/core-free-icons";
-import {
-  Sheet,
-  SheetTrigger,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-} from "@/components/ui/sheet";
+import { Sheet, SheetTrigger, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { useDashboard } from "../dashboard-context";
-
-const players = [
-  { name: "xViper", tag: "viper", status: "ready" as const, banner: "linear-gradient(135deg, #6d28d9, #db2777, #f59e0b)", accent: "#a855f7", bio: "ranked demon" },
-  { name: "NovaKid", tag: "nova", status: "ready" as const, banner: "linear-gradient(135deg, #0ea5e9, #06b6d4, #22d3ee)", accent: "#22d3ee", bio: "chill vibes only" },
-  { name: "GhostRacer", tag: "ghost", status: "idle" as const, banner: "linear-gradient(135deg, #f97316, #ef4444, #dc2626)", accent: "#f97316", bio: "speed is everything" },
-  { name: "ZenithX", tag: "zenith", status: "ready" as const, banner: "linear-gradient(135deg, #10b981, #059669, #047857)", accent: "#34d399", bio: "gg ez" },
-  { name: "LunaWolf", tag: "luna", status: "idle" as const, banner: "linear-gradient(135deg, #8b5cf6, #6d28d9, #4c1d95)", accent: "#a78bfa", bio: "howl at the moon" },
-] as const;
-
-const mockMessages = [
-  { from: "xViper", accent: "#a855f7", text: "yo who's ready to run it", time: "2:31 PM" },
-  { from: "NovaKid", accent: "#22d3ee", text: "let's gooo", time: "2:31 PM" },
-  { from: "GhostRacer", accent: "#f97316", text: "one sec grabbing a drink", time: "2:32 PM" },
-  { from: "xViper", accent: "#a855f7", text: "hurry up ghost we're all waiting", time: "2:33 PM" },
-  { from: "ZenithX", accent: "#34d399", text: "gg ez incoming", time: "2:33 PM" },
-  { from: "LunaWolf", accent: "#a78bfa", text: "don't jinx it lol", time: "2:34 PM" },
-  { from: "NovaKid", accent: "#22d3ee", text: "luna's right, last time you said that we got destroyed", time: "2:34 PM" },
-  { from: "GhostRacer", accent: "#f97316", text: "ok i'm back, let's go", time: "2:35 PM" },
-];
+import { SectionHeader } from "../components/ui/section-header";
+import { ScrollRow } from "../components/ui/scroll-row";
+import { StatusDot, StatusLabel } from "../components/ui/status-indicator";
+import { lobbyPlayers, lobbyMessages } from "../data/mock-players";
 
 export function Lobby() {
   const { settings } = useDashboard();
   const { compactMode, glowEffects } = settings;
+  const cardW = compactMode ? "w-32" : "w-40";
 
   return (
     <div className="w-full max-w-xl lg:max-w-3xl">
@@ -51,9 +31,8 @@ export function Lobby() {
               <SheetHeader className="border-b border-border px-5 py-4">
                 <SheetTitle>Lobby Chat</SheetTitle>
               </SheetHeader>
-
               <div className="flex-1 overflow-y-auto scrollbar-thin px-4 py-3 space-y-3">
-                {mockMessages.map((msg, i) => (
+                {lobbyMessages.map((msg, i) => (
                   <div key={i}>
                     <div className="flex items-baseline gap-2">
                       <span className="text-xs font-bold shrink-0" style={{ color: msg.accent, textShadow: `0 0 6px ${msg.accent}40` }}>{msg.from}</span>
@@ -63,7 +42,6 @@ export function Lobby() {
                   </div>
                 ))}
               </div>
-
               <div className="border-t border-border p-4">
                 <div className="flex items-center gap-2">
                   <input type="text" placeholder="Type a message..." className="flex-1 rounded-lg bg-card ring-1 ring-border px-3 py-2 text-sm text-white placeholder:text-muted-foreground outline-none focus:ring-white/20" />
@@ -80,12 +58,9 @@ export function Lobby() {
         </div>
       </div>
 
-      <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-thin">
-        {players.map((player) => (
-          <div
-            key={player.name}
-            className={`group relative shrink-0 ${compactMode ? "w-32" : "w-40"} rounded-xl overflow-hidden bg-card ring-1 ring-border transition-all duration-300`}
-          >
+      <ScrollRow>
+        {lobbyPlayers.map((player) => (
+          <div key={player.name} className={`group relative shrink-0 ${cardW} rounded-xl overflow-hidden bg-card ring-1 ring-border transition-all duration-300`}>
             <div className={`${compactMode ? "h-12" : "h-16"} w-full`} style={{ background: player.banner }} />
             <div className="relative px-3 pb-3">
               <div
@@ -100,25 +75,19 @@ export function Lobby() {
                 <p className="text-[11px] text-zinc-400 mt-1 truncate">{player.bio}</p>
               </div>
               <div className="mt-2 flex items-center gap-1.5">
-                <span
-                  className="size-1.5 rounded-full"
-                  style={{ backgroundColor: player.status === "ready" ? "#34d399" : "#fbbf24", boxShadow: glowEffects ? `0 0 6px ${player.status === "ready" ? "#34d39980" : "#fbbf2480"}` : undefined }}
-                />
-                <span className={`text-[9px] uppercase tracking-wider font-medium ${player.status === "ready" ? "text-emerald-400" : "text-amber-400"}`}>
-                  {player.status}
-                </span>
+                <StatusDot status={player.status as "ready" | "idle"} />
+                <StatusLabel status={player.status as "ready" | "idle"} />
               </div>
             </div>
           </div>
         ))}
-
-        <div className={`group relative shrink-0 ${compactMode ? "w-32" : "w-40"} rounded-xl overflow-hidden bg-card ring-1 ring-border transition-all duration-300 opacity-40`}>
+        <div className={`group relative shrink-0 ${cardW} rounded-xl overflow-hidden bg-card ring-1 ring-border transition-all duration-300 opacity-40`}>
           <div className="flex flex-col items-center justify-center h-full min-h-[148px]">
             <span className="text-2xl text-muted-foreground">+</span>
             <span className="text-[10px] text-muted-foreground uppercase tracking-wider mt-1">open slot</span>
           </div>
         </div>
-      </div>
+      </ScrollRow>
     </div>
   );
 }

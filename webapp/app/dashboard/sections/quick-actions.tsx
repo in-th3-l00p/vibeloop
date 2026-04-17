@@ -5,20 +5,12 @@ import { Stats } from "../components/stats";
 import { Settings } from "../components/settings";
 import { Friends } from "../components/friends";
 
-export function QuickActions({
-  username,
-  fullName,
-  imageUrl,
-}: {
-  username: string;
-  fullName: string;
-  imageUrl: string;
-}) {
+export function QuickActions() {
   return (
     <div className="grid grid-cols-4 gap-3 w-full max-w-xl lg:max-w-3xl -mt-3">
       <Search />
       <Stats />
-      <Settings username={username} fullName={fullName} imageUrl={imageUrl} />
+      <Settings />
       <Friends />
     </div>
   );

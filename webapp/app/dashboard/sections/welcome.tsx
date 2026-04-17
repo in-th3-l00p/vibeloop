@@ -1,18 +1,12 @@
 "use client";
 
-import { useDashboard, resolveWelcomeText } from "../dashboard-context";
+import { useDashboard } from "../dashboard-context";
+import { useFont } from "../dashboard-shell";
+import { resolveWelcomeText } from "../lib/theme-utils";
 
-export function Welcome({
-  fullName,
-  username,
-  italiannoClass,
-}: {
-  fullName: string;
-  username: string;
-  italiannoClass: string;
-}) {
-  const { settings } = useDashboard();
-  const firstName = fullName.split(" ")[0];
+export function Welcome() {
+  const { settings, user } = useDashboard();
+  const italiannoClass = useFont();
 
   return (
     <h1
@@ -24,7 +18,7 @@ export function Welcome({
           : undefined,
       }}
     >
-      {resolveWelcomeText(settings.welcomeText, { firstName, username })}
+      {resolveWelcomeText(settings.welcomeText, { firstName: user.firstName, username: user.username })}
     </h1>
   );
 }

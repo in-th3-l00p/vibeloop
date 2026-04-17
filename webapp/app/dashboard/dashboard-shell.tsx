@@ -1,7 +1,11 @@
 "use client";
 
-import type { ReactNode } from "react";
-import { DashboardProvider, useDashboard, getTheme } from "./dashboard-context";
+import { createContext, useContext, type ReactNode } from "react";
+import { DashboardProvider, useDashboard, type UserInfo } from "./dashboard-context";
+import { getTheme } from "./lib/theme-utils";
+
+const FontContext = createContext("");
+export const useFont = () => useContext(FontContext);
 
 function ShellInner({ children }: { children: ReactNode }) {
   const { settings } = useDashboard();
@@ -27,10 +31,20 @@ function ShellInner({ children }: { children: ReactNode }) {
   );
 }
 
-export function DashboardShell({ children }: { children: ReactNode }) {
+export function DashboardShell({
+  children,
+  user,
+  italiannoClass,
+}: {
+  children: ReactNode;
+  user: UserInfo;
+  italiannoClass: string;
+}) {
   return (
-    <DashboardProvider>
-      <ShellInner>{children}</ShellInner>
+    <DashboardProvider user={user}>
+      <FontContext.Provider value={italiannoClass}>
+        <ShellInner>{children}</ShellInner>
+      </FontContext.Provider>
     </DashboardProvider>
   );
 }

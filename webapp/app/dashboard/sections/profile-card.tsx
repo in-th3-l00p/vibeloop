@@ -1,18 +1,11 @@
 "use client";
 
 import Image from "next/image";
-import { useDashboard, getProfileCard } from "../dashboard-context";
+import { useDashboard } from "../dashboard-context";
+import { getProfileCard } from "../lib/theme-utils";
 
-export function ProfileCard({
-  fullName,
-  username,
-  imageUrl,
-}: {
-  fullName: string;
-  username: string;
-  imageUrl: string;
-}) {
-  const { settings } = useDashboard();
+export function ProfileCard() {
+  const { settings, user } = useDashboard();
   const { compactMode, glowEffects } = settings;
   const pc = getProfileCard(settings);
 
@@ -33,33 +26,23 @@ export function ProfileCard({
             boxShadow: glowEffects ? `0 0 12px ${pc.avatarRing}60` : undefined,
           }}
         >
-          {imageUrl ? (
-            <Image src={imageUrl} alt={fullName} fill className="object-cover" />
+          {user.imageUrl ? (
+            <Image src={user.imageUrl} alt={user.fullName} fill className="object-cover" />
           ) : (
             <div className="size-full bg-zinc-700 flex items-center justify-center text-lg font-bold">
-              {fullName.charAt(0)}
+              {user.fullName.charAt(0)}
             </div>
           )}
         </div>
 
         <div className="min-w-0 flex-1">
-          <p
-            className="text-sm font-semibold truncate"
-            style={{ color: pc.nameColor, textShadow: glowEffects ? `0 0 8px ${pc.nameColor}50` : undefined }}
-          >
-            {fullName}
-          </p>
-          <p className="text-xs truncate" style={{ color: pc.tagColor }}>@{username}</p>
+          <p className="text-sm font-semibold truncate" style={{ color: pc.nameColor, textShadow: glowEffects ? `0 0 8px ${pc.nameColor}50` : undefined }}>{user.fullName}</p>
+          <p className="text-xs truncate" style={{ color: pc.tagColor }}>@{user.username}</p>
           <p className="text-[11px] mt-0.5 truncate" style={{ color: pc.descColor }}>No description yet.</p>
         </div>
 
         <div className="shrink-0 text-center pl-4" style={{ borderLeft: `1px solid ${pc.divider}` }}>
-          <p
-            className="text-lg font-bold leading-tight"
-            style={{ color: pc.statColor, textShadow: glowEffects ? `0 0 8px ${pc.statColor}40` : undefined }}
-          >
-            0.00
-          </p>
+          <p className="text-lg font-bold leading-tight" style={{ color: pc.statColor, textShadow: glowEffects ? `0 0 8px ${pc.statColor}40` : undefined }}>0.00</p>
           <p className="text-[10px] uppercase tracking-wider" style={{ color: pc.labelColor }}>$VIBE</p>
         </div>
 

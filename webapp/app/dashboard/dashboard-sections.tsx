@@ -8,17 +8,7 @@ import { Lobby } from "./sections/lobby";
 import { Games } from "./sections/games";
 import { Marketplace } from "./sections/marketplace";
 
-export function DashboardSections({
-  username,
-  fullName,
-  imageUrl,
-  italiannoClass,
-}: {
-  username: string;
-  fullName: string;
-  imageUrl: string;
-  italiannoClass: string;
-}) {
+export function DashboardSections() {
   const { settings } = useDashboard();
   const { showWelcome, showLobby, showGames, showMarketplace, compactMode } = settings;
 
@@ -26,9 +16,9 @@ export function DashboardSections({
     <main
       className={`w-full min-h-screen bg-background text-white flex flex-col items-center justify-center px-4 py-20 transition-colors duration-500 ${compactMode ? "gap-4" : "gap-6"}`}
     >
-      {showWelcome && <Welcome fullName={fullName} username={username} italiannoClass={italiannoClass} />}
-      <ProfileCard fullName={fullName} username={username} imageUrl={imageUrl} />
-      <QuickActions username={username} fullName={fullName} imageUrl={imageUrl} />
+      {showWelcome && <Welcome />}
+      <ProfileCard />
+      <QuickActions />
       {showLobby && <Lobby />}
       {showGames && <Games />}
       {showMarketplace && <Marketplace />}

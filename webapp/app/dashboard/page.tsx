@@ -6,18 +6,17 @@ import { DashboardSections } from "./dashboard-sections";
 export default async function Dashboard() {
   const user = await currentUser();
 
-  const username = user?.username ?? "player";
-  const fullName = user?.fullName ?? "Anonymous Player";
-  const imageUrl = user?.imageUrl ?? "";
-
   return (
-    <DashboardShell>
-      <DashboardSections
-        username={username}
-        fullName={fullName}
-        imageUrl={imageUrl}
-        italiannoClass={italianno.className}
-      />
+    <DashboardShell
+      user={{
+        username: user?.username ?? "player",
+        fullName: user?.fullName ?? "Anonymous Player",
+        imageUrl: user?.imageUrl ?? "",
+        firstName: (user?.fullName ?? "Anonymous").split(" ")[0],
+      }}
+      italiannoClass={italianno.className}
+    >
+      <DashboardSections />
     </DashboardShell>
   );
 }
