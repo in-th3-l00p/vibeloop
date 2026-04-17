@@ -54,12 +54,14 @@ export interface Game {
 }
 
 export interface MarketplaceItem {
+  slug: string;
   name: string;
   type: string;
   price: string;
   accent: string;
   gradient: string;
   rarity: string;
+  desc: string;
 }
 
 export interface ChatMessage {

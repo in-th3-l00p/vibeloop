@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useDashboard } from "../dashboard-context";
 import { SectionHeader } from "../components/ui/section-header";
 import { ScrollRow } from "../components/ui/scroll-row";
@@ -17,9 +18,10 @@ export function Marketplace() {
         {marketplaceItems.map((item) => {
           const rc = rarityColors[item.rarity];
           return (
-            <button
-              key={item.name}
-              className={`cursor-pointer group relative shrink-0 ${compactMode ? "w-28" : "w-36"} overflow-hidden rounded-xl bg-card ring-1 ring-border transition-all duration-300 text-left`}
+            <Link
+              key={item.slug}
+              href={`/dashboard/marketplace/${item.slug}`}
+              className={`group relative shrink-0 ${compactMode ? "w-28" : "w-36"} overflow-hidden rounded-xl bg-card ring-1 ring-border transition-all duration-300 text-left block`}
             >
               <div className={`${compactMode ? "h-14" : "h-20"} w-full opacity-50 group-hover:opacity-75 transition-opacity duration-300 flex items-center justify-center`} style={{ background: item.gradient }}>
                 <span className="text-[9px] uppercase tracking-wider font-bold px-2 py-0.5 rounded-full backdrop-blur-sm" style={{ color: rc, backgroundColor: `${rc}20`, border: `1px solid ${rc}40` }}>{item.rarity}</span>
@@ -32,7 +34,7 @@ export function Marketplace() {
                   <span className="text-[9px] text-muted-foreground uppercase tracking-wider">$VIBE</span>
                 </div>
               </div>
-            </button>
+            </Link>
           );
         })}
       </ScrollRow>
