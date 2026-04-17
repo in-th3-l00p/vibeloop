@@ -1,8 +1,6 @@
 import { currentUser } from "@clerk/nextjs/server";
 import Image from "next/image";
-import { HugeiconsIcon } from "@hugeicons/react";
 import { italianno } from "../fonts";
-import { Settings01Icon } from "@hugeicons/core-free-icons";
 import {
   Card,
   CardContent,
@@ -11,6 +9,7 @@ import { Lobby } from "./lobby";
 import { Friends } from "./friends";
 import { Search } from "./search";
 import { Stats } from "./stats";
+import { Settings } from "./settings";
 
 export default async function Dashboard() {
   const user = await currentUser();
@@ -75,12 +74,7 @@ export default async function Dashboard() {
       <div className="grid grid-cols-4 gap-3 w-full max-w-xl lg:max-w-3xl -mt-3">
         <Search />
         <Stats />
-        <button
-          className="cursor-pointer flex flex-col items-center gap-2 rounded-lg bg-zinc-900/80 ring-1 ring-white/10 py-4 text-zinc-400 shadow-[0_0_12px_rgba(255,255,255,0.04)] transition-all duration-300 hover:bg-zinc-800/80 hover:text-white hover:shadow-[0_0_25px_rgba(255,255,255,0.12)]"
-        >
-          <HugeiconsIcon icon={Settings01Icon} size={22} />
-          <span className="text-[11px] uppercase tracking-wider">Settings</span>
-        </button>
+        <Settings username={username} fullName={fullName} imageUrl={imageUrl} />
         <Friends />
       </div>
 
