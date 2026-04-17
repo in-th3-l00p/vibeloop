@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { ClerkProvider, Show, UserButton } from "@clerk/nextjs";
+import ConvexClientProvider from "@/app/components/ConvexClientProvider";
 import { gelasioSans, geistMono, italianno } from "./fonts";
 import "./globals.css";
 import { cn } from "@/lib/utils";
@@ -21,12 +22,14 @@ export default function RootLayout({
     >
       <body className="min-h-full flex flex-col">
         <ClerkProvider>
-          <header className="fixed top-0 right-0 z-50 flex items-center gap-3 p-4">
-            <Show when="signed-in">
-              <UserButton />
-            </Show>
-          </header>
-          {children}
+          <ConvexClientProvider>
+            <header className="fixed top-0 right-0 z-50 flex items-center gap-3 p-4">
+              <Show when="signed-in">
+                <UserButton />
+              </Show>
+            </header>
+            {children}
+          </ConvexClientProvider>
         </ClerkProvider>
       </body>
     </html>
