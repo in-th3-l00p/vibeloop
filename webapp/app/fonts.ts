@@ -1,8 +1,9 @@
-import { Geist, Geist_Mono, Italianno } from "next/font/google";
+import { Gelasio, Geist_Mono, Italianno } from "next/font/google";
 
-export const geistSans = Geist({
-  variable: "--font-geist-sans",
+export const gelasioSans = Gelasio({
+  variable: "--font-gelasio",
   subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
 });
 
 export const geistMono = Geist_Mono({
