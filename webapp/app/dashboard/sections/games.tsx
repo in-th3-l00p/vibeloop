@@ -12,7 +12,7 @@ export function Games() {
 
   return (
     <div className="w-full max-w-xl lg:max-w-3xl">
-      <SectionHeader title="Games" action="View All" />
+      <SectionHeader title="Games" action="View All" href="/dashboard/games" />
       <ScrollRow>
         {games.map((game) => (
           <button

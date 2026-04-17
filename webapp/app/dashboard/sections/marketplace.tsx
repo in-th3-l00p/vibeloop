@@ -12,7 +12,7 @@ export function Marketplace() {
 
   return (
     <div className="w-full max-w-xl lg:max-w-3xl">
-      <SectionHeader title="Marketplace" action="Browse All" />
+      <SectionHeader title="Marketplace" action="Browse All" href="/dashboard/marketplace" />
       <ScrollRow>
         {marketplaceItems.map((item) => {
           const rc = rarityColors[item.rarity];
