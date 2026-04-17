@@ -19,7 +19,6 @@ import {
   CommandEmpty,
   CommandGroup,
   CommandItem,
-  CommandShortcut,
 } from "@/components/ui/command";
 
 export function Search() {
@@ -40,7 +39,7 @@ export function Search() {
     <>
       <button
         onClick={() => setOpen(true)}
-        className="cursor-pointer flex flex-col items-center gap-2 rounded-lg bg-zinc-900/80 ring-1 ring-white/10 py-4 text-zinc-400 shadow-[0_0_12px_rgba(255,255,255,0.04)] transition-all duration-300 hover:bg-zinc-800/80 hover:text-white hover:shadow-[0_0_25px_rgba(255,255,255,0.12)]"
+        className="cursor-pointer flex flex-col items-center gap-2 rounded-lg bg-card ring-1 ring-border py-4 text-muted-foreground transition-all duration-300 hover:text-white"
       >
         <HugeiconsIcon icon={Search01Icon} size={22} />
         <span className="text-[11px] uppercase tracking-wider">Search</span>
@@ -52,37 +51,37 @@ export function Search() {
         title="Search"
         description="Search for players, lobbies, and actions"
       >
-        <Command className="bg-zinc-950 text-white [&_[cmdk-group-heading]]:text-zinc-500">
+        <Command>
           <CommandInput placeholder="Search players, lobbies, actions..." />
           <CommandList className="max-h-80">
-            <CommandEmpty className="text-zinc-500">No results found.</CommandEmpty>
+            <CommandEmpty>No results found.</CommandEmpty>
 
             <CommandGroup heading="Actions">
-              <CommandItem className="text-zinc-300 data-selected:bg-white/5 data-selected:text-white">
-                <HugeiconsIcon icon={GameController01Icon} size={16} className="text-zinc-500" />
+              <CommandItem>
+                <HugeiconsIcon icon={GameController01Icon} size={16} />
                 <span>Create New Lobby</span>
               </CommandItem>
-              <CommandItem className="text-zinc-300 data-selected:bg-white/5 data-selected:text-white">
-                <HugeiconsIcon icon={UserAdd01Icon} size={16} className="text-zinc-500" />
+              <CommandItem>
+                <HugeiconsIcon icon={UserAdd01Icon} size={16} />
                 <span>Add Friend</span>
               </CommandItem>
             </CommandGroup>
 
             <CommandGroup heading="Navigation">
-              <CommandItem className="text-zinc-300 data-selected:bg-white/5 data-selected:text-white">
-                <HugeiconsIcon icon={UserGroupIcon} size={16} className="text-zinc-500" />
+              <CommandItem>
+                <HugeiconsIcon icon={UserGroupIcon} size={16} />
                 <span>Friends</span>
               </CommandItem>
-              <CommandItem className="text-zinc-300 data-selected:bg-white/5 data-selected:text-white">
-                <HugeiconsIcon icon={ChartBarIncreasingIcon} size={16} className="text-zinc-500" />
+              <CommandItem>
+                <HugeiconsIcon icon={ChartBarIncreasingIcon} size={16} />
                 <span>Stats</span>
               </CommandItem>
-              <CommandItem className="text-zinc-300 data-selected:bg-white/5 data-selected:text-white">
-                <HugeiconsIcon icon={Settings01Icon} size={16} className="text-zinc-500" />
+              <CommandItem>
+                <HugeiconsIcon icon={Settings01Icon} size={16} />
                 <span>Settings</span>
               </CommandItem>
-              <CommandItem className="text-zinc-300 data-selected:bg-white/5 data-selected:text-white">
-                <HugeiconsIcon icon={Logout03Icon} size={16} className="text-zinc-500" />
+              <CommandItem>
+                <HugeiconsIcon icon={Logout03Icon} size={16} />
                 <span>Sign Out</span>
               </CommandItem>
             </CommandGroup>
@@ -90,11 +89,8 @@ export function Search() {
             <CommandGroup heading="Players">
               {["xViper", "NovaKid", "GhostRacer", "ZenithX", "LunaWolf"].map(
                 (name) => (
-                  <CommandItem
-                    key={name}
-                    className="text-zinc-300 data-selected:bg-white/5 data-selected:text-white"
-                  >
-                    <span className="size-5 rounded-full bg-zinc-800 flex items-center justify-center text-[10px] font-bold text-zinc-400 shrink-0">
+                  <CommandItem key={name}>
+                    <span className="size-5 rounded-full bg-muted flex items-center justify-center text-[10px] font-bold text-muted-foreground shrink-0">
                       {name[0]}
                     </span>
                     <span>{name}</span>
@@ -104,13 +100,13 @@ export function Search() {
             </CommandGroup>
           </CommandList>
 
-          <div className="border-t border-white/10 px-3 py-2 flex items-center justify-end gap-3 text-[10px] text-zinc-600">
+          <div className="border-t border-border px-3 py-2 flex items-center justify-end gap-3 text-[10px] text-muted-foreground">
             <span>
-              <kbd className="rounded bg-zinc-800 px-1.5 py-0.5 text-zinc-400 font-mono">Ctrl K</kbd>{" "}
+              <kbd className="rounded bg-muted px-1.5 py-0.5 font-mono">Ctrl K</kbd>{" "}
               to toggle
             </span>
             <span>
-              <kbd className="rounded bg-zinc-800 px-1.5 py-0.5 text-zinc-400 font-mono">Esc</kbd>{" "}
+              <kbd className="rounded bg-muted px-1.5 py-0.5 font-mono">Esc</kbd>{" "}
               to close
             </span>
           </div>

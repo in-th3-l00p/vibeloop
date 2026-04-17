@@ -9,6 +9,7 @@ import {
   PencilEdit01Icon,
   ColorsIcon,
   Tick02Icon,
+  ArrowTurnBackwardIcon,
 } from "@hugeicons/core-free-icons";
 import {
   Dialog,
@@ -19,25 +20,25 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Switch } from "@/components/ui/switch";
+import {
+  useDashboard,
+  getProfileCard,
+  profileCardThemes,
+  uiThemes,
+  pageBgPresets,
+  titleColorPresets,
+  resolveWelcomeText,
+} from "./dashboard-context";
 
-const accentPresets = [
-  { name: "Purple", value: "#a855f7" },
-  { name: "Cyan", value: "#22d3ee" },
-  { name: "Orange", value: "#f97316" },
-  { name: "Emerald", value: "#34d399" },
-  { name: "Rose", value: "#f43f5e" },
-  { name: "Amber", value: "#fbbf24" },
-  { name: "Sky", value: "#38bdf8" },
-  { name: "Lavender", value: "#a78bfa" },
-];
-
-const cardThemes = [
-  { name: "Default", bg: "#18181b", ring: "rgba(255,255,255,0.1)" },
-  { name: "Midnight", bg: "#0f172a", ring: "rgba(59,130,246,0.2)" },
-  { name: "Ember", bg: "#1c1412", ring: "rgba(249,115,22,0.2)" },
-  { name: "Forest", bg: "#0f1a14", ring: "rgba(52,211,153,0.2)" },
-  { name: "Void", bg: "#09090b", ring: "rgba(255,255,255,0.05)" },
-];
+const rarityColor: Record<string, string> = {
+  free: "#a1a1aa",
+  common: "#a1a1aa",
+  uncommon: "#22d3ee",
+  rare: "#a855f7",
+  epic: "#f43f5e",
+  legendary: "#fbbf24",
+};
 
 export function Settings({
   username,
@@ -49,41 +50,44 @@ export function Settings({
   imageUrl: string;
 }) {
   const { openUserProfile } = useClerk();
+  const { settings, update, reset } = useDashboard();
+  const pc = getProfileCard(settings);
   const [description, setDescription] = useState("No description yet.");
   const [editingDesc, setEditingDesc] = useState(false);
   const [draftDesc, setDraftDesc] = useState(description);
-  const [accent, setAccent] = useState("#a855f7");
-  const [cardTheme, setCardTheme] = useState(0);
+
+  const firstName = fullName.split(" ")[0];
 
   return (
     <Dialog>
       <DialogTrigger asChild>
-        <button className="cursor-pointer flex flex-col items-center gap-2 rounded-lg bg-zinc-900/80 ring-1 ring-white/10 py-4 text-zinc-400 shadow-[0_0_12px_rgba(255,255,255,0.04)] transition-all duration-300 hover:bg-zinc-800/80 hover:text-white hover:shadow-[0_0_25px_rgba(255,255,255,0.12)]">
+        <button className="cursor-pointer flex flex-col items-center gap-2 rounded-lg bg-card ring-1 ring-border py-4 text-muted-foreground transition-all duration-300 hover:text-white">
           <HugeiconsIcon icon={Settings01Icon} size={22} />
           <span className="text-[11px] uppercase tracking-wider">Settings</span>
         </button>
       </DialogTrigger>
-      <DialogContent className="bg-zinc-950 border-white/10 text-white ring-white/10 sm:max-w-md !p-0 gap-0">
-        <DialogHeader className="px-5 pt-5 pb-0">
+      <DialogContent className="sm:max-w-md !p-0 gap-0 max-h-[85vh] overflow-hidden flex flex-col">
+        <DialogHeader className="px-5 pt-5 pb-0 shrink-0">
           <DialogTitle className="text-white text-sm font-semibold">Settings</DialogTitle>
           <DialogDescription className="text-zinc-500 text-xs">
             Manage your profile and customize your dashboard
           </DialogDescription>
         </DialogHeader>
 
-        <Tabs defaultValue="profile" className="gap-0">
-          <TabsList variant="line" className="px-5 pt-3 w-full">
-            <TabsTrigger value="profile" className="gap-1.5 text-zinc-400 data-active:text-white">
+        <Tabs defaultValue="profile" className="gap-0 min-h-0 flex flex-col flex-1">
+          <TabsList variant="line" className="px-5 pt-3 w-full shrink-0">
+            <TabsTrigger value="profile" className="gap-1.5 text-muted-foreground data-active:text-white">
               <HugeiconsIcon icon={UserIcon} size={14} />
               Profile
             </TabsTrigger>
-            <TabsTrigger value="appearance" className="gap-1.5 text-zinc-400 data-active:text-white">
+            <TabsTrigger value="appearance" className="gap-1.5 text-muted-foreground data-active:text-white">
               <HugeiconsIcon icon={ColorsIcon} size={14} />
               Appearance
             </TabsTrigger>
           </TabsList>
 
-          <TabsContent value="profile">
+          {/* ── Profile Tab ── */}
+          <TabsContent value="profile" className="overflow-y-auto scrollbar-thin">
             <div className="px-5 pt-4 pb-5 space-y-4">
               {/* User Info */}
               <div className="flex items-center gap-3 rounded-lg bg-white/[0.03] ring-1 ring-white/5 p-3">
@@ -102,7 +106,7 @@ export function Settings({
                 </div>
                 <button
                   onClick={() => openUserProfile()}
-                  className="cursor-pointer shrink-0 text-[10px] uppercase tracking-wider text-zinc-400 ring-1 ring-white/10 rounded-md px-2.5 py-1.5 bg-zinc-900/80 shadow-[0_0_8px_rgba(255,255,255,0.04)] transition-all duration-300 hover:text-white hover:shadow-[0_0_15px_rgba(255,255,255,0.12)]"
+                  className="cursor-pointer shrink-0 text-[10px] uppercase tracking-wider text-muted-foreground ring-1 ring-border rounded-md px-2.5 py-1.5 bg-card transition-all duration-300 hover:text-white"
                 >
                   Edit Profile
                 </button>
@@ -114,10 +118,7 @@ export function Settings({
                   <p className="text-[10px] uppercase tracking-[0.2em] text-zinc-500">Description</p>
                   {!editingDesc && (
                     <button
-                      onClick={() => {
-                        setDraftDesc(description);
-                        setEditingDesc(true);
-                      }}
+                      onClick={() => { setDraftDesc(description); setEditingDesc(true); }}
                       className="cursor-pointer text-zinc-500 hover:text-white transition-colors"
                     >
                       <HugeiconsIcon icon={PencilEdit01Icon} size={12} />
@@ -130,86 +131,129 @@ export function Settings({
                       value={draftDesc}
                       onChange={(e) => setDraftDesc(e.target.value.slice(0, 120))}
                       rows={2}
-                      className="w-full rounded-lg bg-zinc-900/80 ring-1 ring-white/10 px-3 py-2 text-sm text-white placeholder:text-zinc-600 outline-none focus:ring-white/20 shadow-[0_0_8px_rgba(255,255,255,0.02)] transition-shadow duration-300 focus:shadow-[0_0_15px_rgba(255,255,255,0.08)] resize-none"
+                      className="w-full rounded-lg bg-card ring-1 ring-border px-3 py-2 text-sm text-white placeholder:text-zinc-600 outline-none focus:ring-white/20 resize-none"
                       placeholder="Tell people about yourself..."
                       autoFocus
                     />
                     <div className="flex items-center justify-between">
                       <span className="text-[10px] text-zinc-600">{draftDesc.length}/120</span>
                       <div className="flex gap-2">
-                        <button
-                          onClick={() => setEditingDesc(false)}
-                          className="cursor-pointer text-[10px] uppercase tracking-wider text-zinc-500 px-2.5 py-1 rounded-md hover:text-white transition-colors"
-                        >
-                          Cancel
-                        </button>
-                        <button
-                          onClick={() => {
-                            setDescription(draftDesc || "No description yet.");
-                            setEditingDesc(false);
-                          }}
-                          className="cursor-pointer text-[10px] uppercase tracking-wider text-white bg-white/10 ring-1 ring-white/10 px-2.5 py-1 rounded-md hover:bg-white/15 transition-colors"
-                        >
-                          Save
-                        </button>
+                        <button onClick={() => setEditingDesc(false)} className="cursor-pointer text-[10px] uppercase tracking-wider text-zinc-500 px-2.5 py-1 rounded-md hover:text-white transition-colors">Cancel</button>
+                        <button onClick={() => { setDescription(draftDesc || "No description yet."); setEditingDesc(false); }} className="cursor-pointer text-[10px] uppercase tracking-wider text-white bg-white/10 ring-1 ring-border px-2.5 py-1 rounded-md hover:bg-white/15 transition-colors">Save</button>
                       </div>
                     </div>
                   </div>
                 ) : (
-                  <p className="text-sm text-zinc-400 rounded-lg bg-white/[0.03] ring-1 ring-white/5 px-3 py-2.5">
-                    {description}
-                  </p>
+                  <p className="text-sm text-muted-foreground rounded-lg bg-white/[0.03] ring-1 ring-white/5 px-3 py-2.5">{description}</p>
                 )}
               </div>
 
-              {/* General Info */}
+              {/* Card Theme */}
               <div>
-                <p className="text-[10px] uppercase tracking-[0.2em] text-zinc-500 mb-2">General</p>
-                <div className="space-y-1.5">
-                  {[
-                    { label: "Member Since", value: "April 2026" },
-                    { label: "Games Played", value: "0" },
-                    { label: "Rank", value: "Unranked" },
-                    { label: "$VIBE Balance", value: "0.00" },
-                  ].map((row) => (
-                    <div
-                      key={row.label}
-                      className="flex items-center justify-between rounded-lg bg-white/[0.03] ring-1 ring-white/5 px-3 py-2"
-                    >
-                      <span className="text-[11px] text-zinc-500">{row.label}</span>
-                      <span className="text-xs font-medium text-zinc-300">{row.value}</span>
-                    </div>
-                  ))}
+                <p className="text-[10px] uppercase tracking-[0.2em] text-zinc-500 mb-1">Card Theme</p>
+                <p className="text-[10px] text-zinc-600 mb-3">Choose how your profile card looks to everyone</p>
+
+                <div className="space-y-2">
+                  {profileCardThemes.map((theme) => {
+                    const active = settings.profileCardTheme === theme.id;
+                    const rc = rarityColor[theme.rarity];
+                    return (
+                      <button
+                        key={theme.id}
+                        onClick={() => update("profileCardTheme", theme.id)}
+                        className={`cursor-pointer w-full rounded-xl overflow-hidden transition-all duration-200 ring-1 text-left ${
+                          active ? "ring-white/30" : "ring-white/5 hover:ring-white/15"
+                        }`}
+                      >
+                        {/* Mini preview */}
+                        <div
+                          className="flex items-center gap-3 px-3 py-2.5"
+                          style={{
+                            backgroundColor: theme.nameBg,
+                            borderBottom: `1px solid ${theme.borderColor}`,
+                          }}
+                        >
+                          <div
+                            className="size-7 rounded-full shrink-0 bg-zinc-700 flex items-center justify-center text-[10px] font-bold"
+                            style={{ outline: `2px solid ${theme.avatarRing}`, color: theme.nameColor }}
+                          >
+                            {fullName.charAt(0)}
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <p className="text-xs font-bold truncate" style={{ color: theme.nameColor }}>{fullName}</p>
+                            <p className="text-[9px] truncate" style={{ color: theme.tagColor }}>@{username}</p>
+                          </div>
+                          <div className="shrink-0 text-right">
+                            <p className="text-[10px] font-bold" style={{ color: theme.statColor }}>0.00</p>
+                            <p className="text-[8px] uppercase" style={{ color: theme.labelColor }}>$VIBE</p>
+                          </div>
+                        </div>
+                        {/* Bottom bar */}
+                        <div className="flex items-center justify-between px-3 py-1.5 bg-white/[0.02]">
+                          <div className="flex items-center gap-2">
+                            <span className="text-[10px] font-medium text-zinc-300">{theme.name}</span>
+                            <span
+                              className="text-[8px] uppercase tracking-wider font-bold px-1.5 py-0.5 rounded-full"
+                              style={{ color: rc, backgroundColor: `${rc}15` }}
+                            >
+                              {theme.rarity}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-1.5">
+                            {theme.price > 0 && (
+                              <span className="text-[9px] text-zinc-500">{theme.price} $VIBE</span>
+                            )}
+                            {active && (
+                              <HugeiconsIcon icon={Tick02Icon} size={12} className="text-white" strokeWidth={2} />
+                            )}
+                          </div>
+                        </div>
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
             </div>
           </TabsContent>
 
-          <TabsContent value="appearance">
-            <div className="px-5 pt-4 pb-5 space-y-4">
-              {/* Accent Color */}
+          {/* ── Appearance Tab ── */}
+          <TabsContent value="appearance" className="overflow-y-auto scrollbar-thin">
+            <div className="px-5 pt-4 pb-5 space-y-5">
+
+              {/* Welcome Title */}
               <div>
-                <p className="text-[10px] uppercase tracking-[0.2em] text-zinc-500 mb-2.5">Accent Color</p>
+                <p className="text-[10px] uppercase tracking-[0.2em] text-zinc-500 mb-1">Welcome Title</p>
+                <p className="text-[10px] text-zinc-600 mb-3">
+                  Use {"{{first_name}}"} or {"{{username}}"} as variables
+                </p>
+                <input
+                  type="text"
+                  value={settings.welcomeText}
+                  onChange={(e) => update("welcomeText", e.target.value)}
+                  className="w-full rounded-lg bg-card ring-1 ring-border px-3 py-2 text-sm text-white placeholder:text-zinc-600 outline-none focus:ring-white/20 mb-2"
+                  placeholder="Welcome, {{first_name}}"
+                />
+                <p className="text-[10px] text-zinc-600 mb-2">Preview: <span className="text-muted-foreground">{resolveWelcomeText(settings.welcomeText, { firstName, username })}</span></p>
+
+                {/* Title Color */}
+                <p className="text-[10px] uppercase tracking-[0.2em] text-zinc-500 mb-2">Title Color</p>
                 <div className="flex flex-wrap gap-2">
-                  {accentPresets.map((preset) => (
+                  {titleColorPresets.map((preset) => (
                     <button
                       key={preset.value}
-                      onClick={() => setAccent(preset.value)}
-                      className="cursor-pointer relative size-8 rounded-full transition-all duration-200 ring-1 ring-white/10 hover:scale-110"
+                      onClick={() => update("titleColor", preset.value)}
+                      className="cursor-pointer relative size-7 rounded-full transition-all duration-200 hover:scale-110"
                       style={{
                         backgroundColor: preset.value,
-                        boxShadow: accent === preset.value ? `0 0 12px ${preset.value}80` : undefined,
-                        outline: accent === preset.value ? `2px solid ${preset.value}` : undefined,
-                        outlineOffset: "2px",
+                        outline: settings.titleColor === preset.value ? `2px solid ${preset.value}` : `1px solid rgba(255,255,255,0.1)`,
+                        outlineOffset: settings.titleColor === preset.value ? "2px" : "0",
+                        boxShadow: settings.titleColor === preset.value ? `0 0 10px ${preset.value}60` : undefined,
                       }}
                       title={preset.name}
                     >
-                      {accent === preset.value && (
-                        <HugeiconsIcon
-                          icon={Tick02Icon}
-                          size={14}
-                          className="absolute inset-0 m-auto text-white drop-shadow-md"
-                          strokeWidth={3}
+                      {settings.titleColor === preset.value && (
+                        <HugeiconsIcon icon={Tick02Icon} size={10} className="absolute inset-0 m-auto text-black drop-shadow-md" strokeWidth={3}
+                          style={{ color: preset.value === "#ffffff" ? "#000" : "#fff" }}
                         />
                       )}
                     </button>
@@ -217,16 +261,42 @@ export function Settings({
                 </div>
               </div>
 
-              {/* Card Theme */}
+              {/* Page Background */}
               <div>
-                <p className="text-[10px] uppercase tracking-[0.2em] text-zinc-500 mb-2.5">Card Theme</p>
+                <p className="text-[10px] uppercase tracking-[0.2em] text-zinc-500 mb-1">Page Background</p>
+                <p className="text-[10px] text-zinc-600 mb-3">Set the background color of the dashboard</p>
+                <div className="flex flex-wrap gap-2">
+                  {pageBgPresets.map((preset) => (
+                    <button
+                      key={preset.value}
+                      onClick={() => update("pageBg", preset.value)}
+                      className={`cursor-pointer flex items-center gap-2 rounded-lg px-3 py-2 transition-all duration-200 ring-1 ${
+                        settings.pageBg === preset.value
+                          ? "ring-white/30 bg-white/[0.05]"
+                          : "ring-white/5 bg-white/[0.02] hover:bg-white/[0.04]"
+                      }`}
+                    >
+                      <div
+                        className="size-5 rounded shrink-0 ring-1 ring-border"
+                        style={{ backgroundColor: preset.value }}
+                      />
+                      <span className="text-[10px] text-zinc-300">{preset.name}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* UI Component Theme */}
+              <div>
+                <p className="text-[10px] uppercase tracking-[0.2em] text-zinc-500 mb-1">UI Components</p>
+                <p className="text-[10px] text-zinc-600 mb-3">Theme for cards, buttons, and panels</p>
                 <div className="space-y-1.5">
-                  {cardThemes.map((theme, i) => (
+                  {uiThemes.map((theme, i) => (
                     <button
                       key={theme.name}
-                      onClick={() => setCardTheme(i)}
+                      onClick={() => update("uiTheme", i)}
                       className={`cursor-pointer w-full flex items-center gap-3 rounded-lg px-3 py-2.5 transition-all duration-200 ring-1 ${
-                        cardTheme === i
+                        settings.uiTheme === i
                           ? "ring-white/20 bg-white/[0.05]"
                           : "ring-white/5 bg-white/[0.02] hover:bg-white/[0.04]"
                       }`}
@@ -234,14 +304,12 @@ export function Settings({
                       <div
                         className="size-8 rounded-md shrink-0"
                         style={{
-                          backgroundColor: theme.bg,
-                          boxShadow: `inset 0 0 0 1px ${theme.ring}`,
+                          backgroundColor: theme.cardBg,
+                          boxShadow: `inset 0 0 0 1px ${theme.cardRing}`,
                         }}
                       />
-                      <span className="text-xs font-medium text-zinc-300 flex-1 text-left">
-                        {theme.name}
-                      </span>
-                      {cardTheme === i && (
+                      <span className="text-xs font-medium text-zinc-300 flex-1 text-left">{theme.name}</span>
+                      {settings.uiTheme === i && (
                         <HugeiconsIcon icon={Tick02Icon} size={14} className="text-white shrink-0" strokeWidth={2} />
                       )}
                     </button>
@@ -249,53 +317,47 @@ export function Settings({
                 </div>
               </div>
 
-              {/* Preview */}
+              {/* Glow + Compact */}
               <div>
-                <p className="text-[10px] uppercase tracking-[0.2em] text-zinc-500 mb-2.5">Preview</p>
-                <div
-                  className="rounded-xl p-3 ring-1 transition-all duration-300"
-                  style={{
-                    backgroundColor: cardThemes[cardTheme].bg,
-                    boxShadow: `0 0 15px ${accent}15`,
-                    outlineColor: cardThemes[cardTheme].ring,
-                    borderColor: cardThemes[cardTheme].ring,
-                  }}
-                >
-                  <div className="flex items-center gap-3">
-                    <div
-                      className="size-8 rounded-full overflow-hidden"
-                      style={{ outline: `2px solid ${accent}`, outlineOffset: "1px" }}
-                    >
-                      {imageUrl ? (
-                        <img src={imageUrl} alt={fullName} className="size-full object-cover" />
-                      ) : (
-                        <div
-                          className="size-full flex items-center justify-center text-xs font-bold"
-                          style={{ backgroundColor: `${accent}30`, color: accent }}
-                        >
-                          {fullName.charAt(0)}
-                        </div>
-                      )}
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <p
-                        className="text-sm font-bold truncate"
-                        style={{ color: accent, textShadow: `0 0 8px ${accent}60` }}
-                      >
-                        {fullName}
-                      </p>
-                      <p className="text-[10px] text-zinc-500 truncate">@{username}</p>
-                    </div>
-                    <div
-                      className="text-xs font-bold"
-                      style={{ color: accent }}
-                    >
-                      0.00
-                      <span className="text-[9px] text-zinc-600 ml-1">$VIBE</span>
-                    </div>
-                  </div>
+                <p className="text-[10px] uppercase tracking-[0.2em] text-zinc-500 mb-2.5">Effects</p>
+                <div className="space-y-1">
+                  <label className="flex items-center justify-between rounded-lg bg-white/[0.03] ring-1 ring-white/5 px-3 py-2.5 cursor-pointer hover:bg-white/[0.05] transition-colors">
+                    <div><p className="text-xs font-medium text-zinc-200">Glow Effects</p><p className="text-[10px] text-zinc-500 mt-0.5">Neon glows on text, borders, and shadows</p></div>
+                    <Switch checked={settings.glowEffects} onCheckedChange={(v) => update("glowEffects", v)} className="shrink-0 ml-3" />
+                  </label>
+                  <label className="flex items-center justify-between rounded-lg bg-white/[0.03] ring-1 ring-white/5 px-3 py-2.5 cursor-pointer hover:bg-white/[0.05] transition-colors">
+                    <div><p className="text-xs font-medium text-zinc-200">Compact Mode</p><p className="text-[10px] text-zinc-500 mt-0.5">Reduce card sizes and spacing</p></div>
+                    <Switch checked={settings.compactMode} onCheckedChange={(v) => update("compactMode", v)} className="shrink-0 ml-3" />
+                  </label>
                 </div>
               </div>
+
+              {/* Section Visibility */}
+              <div>
+                <p className="text-[10px] uppercase tracking-[0.2em] text-zinc-500 mb-2.5">Sections</p>
+                <div className="space-y-1">
+                  {([
+                    { key: "showWelcome" as const, label: "Welcome Title" },
+                    { key: "showLobby" as const, label: "Lobby" },
+                    { key: "showGames" as const, label: "Games" },
+                    { key: "showMarketplace" as const, label: "Marketplace" },
+                  ]).map((s) => (
+                    <label key={s.key} className="flex items-center justify-between rounded-lg bg-white/[0.03] ring-1 ring-white/5 px-3 py-2 cursor-pointer hover:bg-white/[0.05] transition-colors">
+                      <p className="text-xs font-medium text-zinc-200">{s.label}</p>
+                      <Switch checked={settings[s.key]} onCheckedChange={(v) => update(s.key, v)} className="shrink-0 ml-3" />
+                    </label>
+                  ))}
+                </div>
+              </div>
+
+              {/* Reset */}
+              <button
+                onClick={reset}
+                className="cursor-pointer w-full flex items-center justify-center gap-2 rounded-lg ring-1 ring-border px-3 py-2.5 text-muted-foreground transition-all duration-300 hover:text-white hover:bg-white/[0.03]"
+              >
+                <HugeiconsIcon icon={ArrowTurnBackwardIcon} size={14} />
+                <span className="text-[11px] uppercase tracking-wider font-medium">Reset to Defaults</span>
+              </button>
             </div>
           </TabsContent>
         </Tabs>

@@ -40,15 +40,15 @@ export function Stats() {
   return (
     <Dialog>
       <DialogTrigger asChild>
-        <button className="cursor-pointer flex flex-col items-center gap-2 rounded-lg bg-zinc-900/80 ring-1 ring-white/10 py-4 text-zinc-400 shadow-[0_0_12px_rgba(255,255,255,0.04)] transition-all duration-300 hover:bg-zinc-800/80 hover:text-white hover:shadow-[0_0_25px_rgba(255,255,255,0.12)]">
+        <button className="cursor-pointer flex flex-col items-center gap-2 rounded-lg bg-card ring-1 ring-border py-4 text-muted-foreground transition-all duration-300 hover:text-white">
           <HugeiconsIcon icon={ChartBarIncreasingIcon} size={22} />
           <span className="text-[11px] uppercase tracking-wider">Stats</span>
         </button>
       </DialogTrigger>
-      <DialogContent className="bg-zinc-950 border-white/10 text-white ring-white/10 sm:max-w-md !p-0 gap-0">
+      <DialogContent className="sm:max-w-md !p-0 gap-0">
         <DialogHeader className="px-5 pt-5 pb-0">
-          <DialogTitle className="text-white text-sm font-semibold">Your Stats</DialogTitle>
-          <DialogDescription className="text-zinc-500 text-xs">
+          <DialogTitle>Your Stats</DialogTitle>
+          <DialogDescription>
             Lifetime performance across all games
           </DialogDescription>
         </DialogHeader>
@@ -57,7 +57,7 @@ export function Stats() {
           {overview.map((stat) => (
             <div
               key={stat.label}
-              className="flex flex-col items-center gap-1.5 rounded-lg bg-white/[0.03] ring-1 ring-white/5 py-3 px-2"
+              className="flex flex-col items-center gap-1.5 rounded-lg bg-white/[0.03] ring-1 ring-border py-3 px-2"
             >
               <HugeiconsIcon
                 icon={stat.icon}
@@ -76,7 +76,7 @@ export function Stats() {
               >
                 {stat.value}
               </p>
-              <p className="text-[9px] uppercase tracking-wider text-zinc-500 text-center">
+              <p className="text-[9px] uppercase tracking-wider text-muted-foreground text-center">
                 {stat.label}
               </p>
             </div>
@@ -84,7 +84,7 @@ export function Stats() {
         </div>
 
         <div className="px-5 pt-3 pb-5">
-          <p className="text-[10px] uppercase tracking-[0.2em] text-zinc-500 mb-2.5">
+          <p className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground mb-2.5">
             Per Game
           </p>
           <div className="space-y-2">
@@ -92,23 +92,16 @@ export function Stats() {
               const rate = Math.round((game.wins / game.played) * 100);
               return (
                 <div key={game.name} className="flex items-center gap-3">
-                  <p
-                    className="text-xs font-semibold w-24 truncate shrink-0"
-                    style={{ color: game.accent }}
-                  >
+                  <p className="text-xs font-semibold w-24 truncate shrink-0" style={{ color: game.accent }}>
                     {game.name}
                   </p>
                   <div className="flex-1 h-1.5 rounded-full bg-white/5 overflow-hidden">
                     <div
                       className="h-full rounded-full transition-all duration-500"
-                      style={{
-                        width: `${rate}%`,
-                        backgroundColor: game.accent,
-                        boxShadow: `0 0 6px ${game.accent}80`,
-                      }}
+                      style={{ width: `${rate}%`, backgroundColor: game.accent, boxShadow: `0 0 6px ${game.accent}80` }}
                     />
                   </div>
-                  <p className="text-[10px] text-zinc-500 w-16 text-right shrink-0">
+                  <p className="text-[10px] text-muted-foreground w-16 text-right shrink-0">
                     {game.wins}/{game.played} ({rate}%)
                   </p>
                 </div>
