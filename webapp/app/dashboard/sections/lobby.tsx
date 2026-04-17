@@ -10,7 +10,7 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
-import { useDashboard } from "./dashboard-context";
+import { useDashboard } from "../dashboard-context";
 
 const players = [
   { name: "xViper", tag: "viper", status: "ready" as const, banner: "linear-gradient(135deg, #6d28d9, #db2777, #f59e0b)", accent: "#a855f7", bio: "ranked demon" },

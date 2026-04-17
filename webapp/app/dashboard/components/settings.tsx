@@ -29,7 +29,7 @@ import {
   pageBgPresets,
   titleColorPresets,
   resolveWelcomeText,
-} from "./dashboard-context";
+} from "../dashboard-context";
 
 const rarityColor: Record<string, string> = {
   free: "#a1a1aa",
