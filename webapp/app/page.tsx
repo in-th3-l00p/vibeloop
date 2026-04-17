@@ -7,16 +7,16 @@ export default function Home() {
       <section className="w-full h-screen relative bg-gray-950 text-white p-32">
         <div className="relative w-full text-center z-10">
           <p className="text-center font-semibold text-lg">vibeloop</p>
-          <h1 className={`${italianno.className} z-10 w-full text-center text-6xl md:text-8xl leading-none`}>
+          <h1 className={`${italianno.className} z-10 w-full text-center text-6xl md:text-8xl leading-none drop-shadow-[0_0_25px_rgba(255,255,255,0.2)]`}>
             &quot;tech made us stay inside,<br />
             it&apos;s time to make it get us outside&quot;
           </h1>
 
           <div className="flex justify-center items-center gap-8 mt-8">
-            <a href="/dashboard" className="cursor-pointer rounded border-4 border-white/90 bg-white/14 px-4 py-2 text-white font-bold backdrop-blur-sm transition-colors hover:border-white hover:bg-white/90 hover:text-gray-950">
+            <a href="/dashboard" className="cursor-pointer rounded border-4 border-white/90 bg-white/14 px-4 py-2 text-white font-bold backdrop-blur-sm shadow-[0_0_15px_rgba(255,255,255,0.15)] transition-all duration-300 hover:border-white hover:bg-white/90 hover:text-gray-950 hover:shadow-[0_0_30px_rgba(255,255,255,0.4)]">
               jump in
             </a>
-            <a href="#about" className="cursor-pointer rounded border-4 border-zinc-700/80 bg-zinc-950/55 px-4 py-2 text-lg font-semibold text-zinc-100 backdrop-blur-sm transition-colors hover:border-zinc-700 hover:bg-zinc-700/80">
+            <a href="#about" className="cursor-pointer rounded border-4 border-zinc-700/80 bg-zinc-950/55 px-4 py-2 text-lg font-semibold text-zinc-100 backdrop-blur-sm shadow-[0_0_12px_rgba(255,255,255,0.06)] transition-all duration-300 hover:border-zinc-700 hover:bg-zinc-700/80 hover:shadow-[0_0_25px_rgba(255,255,255,0.15)]">
               learn more
             </a>
           </div>
@@ -44,10 +44,10 @@ export default function Home() {
             <p className="text-sm font-semibold tracking-[0.3em] uppercase text-zinc-500">
               About us
             </p>
-            <h2 className={`${italianno.className} text-5xl md:text-7xl leading-none`}>
+            <h2 className={`${italianno.className} text-5xl md:text-7xl leading-none drop-shadow-[0_0_20px_rgba(255,255,255,0.15)]`}>
               Where the real world meets the loop
             </h2>
-            <div className="w-16 h-[2px] bg-white/20" />
+            <div className="w-16 h-[2px] bg-white/20 shadow-[0_0_10px_rgba(255,255,255,0.15)]" />
           </div>
 
           <div className="space-y-6 text-zinc-400 text-lg leading-relaxed">
