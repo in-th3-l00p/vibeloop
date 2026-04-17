@@ -3,8 +3,8 @@ import { italianno } from "./fonts";
 
 export default function Home() {
   return (
-    <main className="w-screen min-h-screen dark">
-      <section className="w-screen h-screen relative bg-gray-950 text-white p-32">
+    <main className="w-full min-h-screen dark overflow-x-hidden">
+      <section className="w-full h-screen relative bg-gray-950 text-white p-32">
         <div className="relative w-full text-center z-10">
           <p className="text-center font-semibold text-lg">vibeloop</p>
           <h1 className={`${italianno.className} z-10 w-full text-center text-6xl md:text-8xl leading-none`}>
@@ -16,13 +16,13 @@ export default function Home() {
             <button className="cursor-pointer rounded border-4 border-white/90 bg-white/14 px-4 py-2 text-white font-bold backdrop-blur-sm transition-colors hover:border-white hover:bg-white/90 hover:text-gray-950">
               jump in
             </button>
-            <button className="cursor-pointer rounded border-4 border-zinc-700/80 bg-zinc-950/55 px-4 py-2 text-lg font-semibold text-zinc-100 backdrop-blur-sm transition-colors hover:border-zinc-700 hover:bg-zinc-700/80">
+            <a href="#about" className="cursor-pointer rounded border-4 border-zinc-700/80 bg-zinc-950/55 px-4 py-2 text-lg font-semibold text-zinc-100 backdrop-blur-sm transition-colors hover:border-zinc-700 hover:bg-zinc-700/80">
               learn more
-            </button>
+            </a>
           </div>
         </div>
 
-        <div className="w-screen h-screen top-0 left-0 absolute flex items-center justify-center p-8 ">
+        <div className="w-full h-full top-0 left-0 absolute flex items-center justify-center p-8">
           <Image
             src="/background.png"
             width={1920}
@@ -34,6 +34,34 @@ export default function Home() {
           />
         </div>
 
+      </section>
+
+      <section id="about" className="w-full min-h-screen relative bg-gray-950 text-white flex items-center scroll-mt-0">
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_rgba(255,255,255,0.03)_0%,_transparent_60%)]" />
+
+        <div className="relative z-10 w-full max-w-6xl mx-auto px-8 md:px-16 py-24 grid grid-cols-1 md:grid-cols-2 gap-16 md:gap-24 items-center">
+          <div className="space-y-6">
+            <p className="text-sm font-semibold tracking-[0.3em] uppercase text-zinc-500">
+              About us
+            </p>
+            <h2 className={`${italianno.className} text-5xl md:text-7xl leading-none`}>
+              Where the real world meets the loop
+            </h2>
+            <div className="w-16 h-[2px] bg-white/20" />
+          </div>
+
+          <div className="space-y-6 text-zinc-400 text-lg leading-relaxed">
+            <p>
+              Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.
+            </p>
+            <p>
+              Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
+            </p>
+            <p>
+              Curabitur pretium tincidunt lacus. Nulla gravida orci a odio. Nullam varius, turpis et commodo pharetra, est eros bibendum elit, nec luctus magna felis sollicitudin mauris.
+            </p>
+          </div>
+        </div>
       </section>
     </main>
   );
