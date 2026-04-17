@@ -1,34 +1,30 @@
 "use client";
 
-import { createContext, useContext, type ReactNode } from "react";
+import { createContext, useContext, useEffect, type ReactNode } from "react";
 import { DashboardProvider, useDashboard, type UserInfo } from "./dashboard-context";
-import { getTheme } from "./lib/theme-utils";
+import { getActiveTheme } from "./lib/theme-utils";
 
 const FontContext = createContext("");
 export const useFont = () => useContext(FontContext);
 
-function ShellInner({ children }: { children: ReactNode }) {
+function ThemeApplicator({ children }: { children: ReactNode }) {
   const { settings } = useDashboard();
-  const t = getTheme(settings);
+  const theme = getActiveTheme(settings);
 
-  return (
-    <div
-      style={{
-        ["--background" as string]: t.pageBg,
-        ["--card" as string]: t.cardBg,
-        ["--card-foreground" as string]: "#fafafa",
-        ["--popover" as string]: t.cardBg,
-        ["--popover-foreground" as string]: "#fafafa",
-        ["--border" as string]: t.cardRing,
-        ["--input" as string]: t.cardRing,
-        ["--muted" as string]: t.cardBg,
-        ["--muted-foreground" as string]: t.textMuted,
-        ["--ring" as string]: t.cardRing,
-      }}
-    >
-      {children}
-    </div>
-  );
+  useEffect(() => {
+    const root = document.documentElement;
+    const entries = Object.entries(theme.cssVars);
+    for (const [key, value] of entries) {
+      root.style.setProperty(key, value);
+    }
+    return () => {
+      for (const [key] of entries) {
+        root.style.removeProperty(key);
+      }
+    };
+  }, [theme]);
+
+  return <>{children}</>;
 }
 
 export function DashboardShell({
@@ -43,7 +39,7 @@ export function DashboardShell({
   return (
     <DashboardProvider user={user}>
       <FontContext.Provider value={italiannoClass}>
-        <ShellInner>{children}</ShellInner>
+        <ThemeApplicator>{children}</ThemeApplicator>
       </FontContext.Provider>
     </DashboardProvider>
   );

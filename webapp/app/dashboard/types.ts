@@ -16,18 +16,15 @@ export interface ProfileCardTheme {
   rarity: Rarity;
 }
 
-export interface UiTheme {
+export interface CssVarTheme {
   name: string;
-  cardBg: string;
-  cardRing: string;
-  textMuted: string;
+  cssVars: Record<string, string>;
 }
 
 export interface DashboardSettings {
   profileCardTheme: string;
   welcomeText: string;
   titleColor: string;
-  pageBg: string;
   uiTheme: number;
   showWelcome: boolean;
   showLobby: boolean;

@@ -13,7 +13,6 @@ const defaults: DashboardSettings = {
   profileCardTheme: "default",
   welcomeText: "Welcome, {{first_name}}",
   titleColor: "#ffffff",
-  pageBg: "#030712",
   uiTheme: 0,
   showWelcome: true,
   showLobby: true,

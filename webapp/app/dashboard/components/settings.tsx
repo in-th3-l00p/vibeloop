@@ -9,7 +9,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { useDashboard } from "../dashboard-context";
 import { getProfileCard, resolveWelcomeText } from "../lib/theme-utils";
 import { rarityColors } from "../lib/constants";
-import { profileCardThemes, uiThemes, pageBgPresets, titleColorPresets } from "../data/theme-presets";
+import { profileCardThemes, uiThemes, titleColorPresets } from "../data/theme-presets";
 import { ActionButton } from "./ui/action-button";
 import { SettingsToggle } from "./ui/settings-toggle";
 
@@ -171,25 +171,8 @@ export function Settings() {
               </div>
 
               <div>
-                <p className="text-[10px] uppercase tracking-[0.2em] text-zinc-500 mb-1">Page Background</p>
-                <p className="text-[10px] text-zinc-600 mb-3">Set the background color of the dashboard</p>
-                <div className="flex flex-wrap gap-2">
-                  {pageBgPresets.map((preset) => (
-                    <button
-                      key={preset.value}
-                      onClick={() => update("pageBg", preset.value)}
-                      className={`cursor-pointer flex items-center gap-2 rounded-lg px-3 py-2 transition-all duration-200 ring-1 ${settings.pageBg === preset.value ? "ring-white/30 bg-white/[0.05]" : "ring-white/5 bg-white/[0.02] hover:bg-white/[0.04]"}`}
-                    >
-                      <div className="size-5 rounded shrink-0 ring-1 ring-border" style={{ backgroundColor: preset.value }} />
-                      <span className="text-[10px] text-zinc-300">{preset.name}</span>
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <div>
-                <p className="text-[10px] uppercase tracking-[0.2em] text-zinc-500 mb-1">UI Components</p>
-                <p className="text-[10px] text-zinc-600 mb-3">Theme for cards, buttons, and panels</p>
+                <p className="text-[10px] uppercase tracking-[0.2em] text-zinc-500 mb-1">UI Theme</p>
+                <p className="text-[10px] text-zinc-600 mb-3">Controls background, cards, borders, and all component colors</p>
                 <div className="space-y-1.5">
                   {uiThemes.map((theme, i) => (
                     <button
@@ -197,7 +180,10 @@ export function Settings() {
                       onClick={() => update("uiTheme", i)}
                       className={`cursor-pointer w-full flex items-center gap-3 rounded-lg px-3 py-2.5 transition-all duration-200 ring-1 ${settings.uiTheme === i ? "ring-white/20 bg-white/[0.05]" : "ring-white/5 bg-white/[0.02] hover:bg-white/[0.04]"}`}
                     >
-                      <div className="size-8 rounded-md shrink-0" style={{ backgroundColor: theme.cardBg, boxShadow: `inset 0 0 0 1px ${theme.cardRing}` }} />
+                      <div className="flex shrink-0 rounded-md overflow-hidden ring-1 ring-white/10">
+                        <div className="w-4 h-8" style={{ background: theme.cssVars["--background"] }} />
+                        <div className="w-4 h-8" style={{ background: theme.cssVars["--card"], borderLeft: `1px solid ${theme.cssVars["--border"]}` }} />
+                      </div>
                       <span className="text-xs font-medium text-zinc-300 flex-1 text-left">{theme.name}</span>
                       {settings.uiTheme === i && <HugeiconsIcon icon={Tick02Icon} size={14} className="text-white shrink-0" strokeWidth={2} />}
                     </button>
