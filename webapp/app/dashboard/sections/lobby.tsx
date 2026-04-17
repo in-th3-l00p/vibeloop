@@ -1,20 +1,23 @@
 "use client";
 
+import { useState } from "react";
 import Image from "next/image";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { BubbleChatIcon } from "@hugeicons/core-free-icons";
 import { Sheet, SheetTrigger, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { useDashboard } from "../dashboard-context";
-import { SectionHeader } from "../components/ui/section-header";
 import { ScrollRow } from "../components/ui/scroll-row";
 import { StatusDot, StatusLabel } from "../components/ui/status-indicator";
 import { InviteDialog } from "../components/invite-dialog";
+import { PlayerDialog } from "../components/player-dialog";
 import { lobbyPlayers, lobbyMessages } from "../data/mock-players";
+import type { Player } from "../types";
 
 export function Lobby() {
   const { settings } = useDashboard();
   const { compactMode, glowEffects } = settings;
   const cardW = compactMode ? "w-32" : "w-40";
+  const [selected, setSelected] = useState<Player | null>(null);
 
   return (
     <div className="w-full max-w-xl lg:max-w-3xl">
@@ -63,7 +66,11 @@ export function Lobby() {
 
       <ScrollRow>
         {lobbyPlayers.map((player) => (
-          <div key={player.name} className={`group relative shrink-0 ${cardW} rounded-xl overflow-hidden bg-card ring-1 ring-border transition-all duration-300`}>
+          <button
+            key={player.name}
+            onClick={() => setSelected(player)}
+            className={`cursor-pointer group relative shrink-0 ${cardW} rounded-xl overflow-hidden bg-card ring-1 ring-border transition-all duration-300 text-left`}
+          >
             <div className={`${compactMode ? "h-12" : "h-16"} w-full`} style={{ background: player.banner }} />
             <div className="relative px-3 pb-3">
               <div
@@ -82,7 +89,7 @@ export function Lobby() {
                 <StatusLabel status={player.status as "ready" | "idle"} />
               </div>
             </div>
-          </div>
+          </button>
         ))}
         <div className={`group relative shrink-0 ${cardW} rounded-xl overflow-hidden bg-card ring-1 ring-border transition-all duration-300 opacity-40`}>
           <div className="flex flex-col items-center justify-center h-full min-h-[148px]">
@@ -91,6 +98,10 @@ export function Lobby() {
           </div>
         </div>
       </ScrollRow>
+
+      {selected && (
+        <PlayerDialog player={selected} open={!!selected} onOpenChange={(v) => { if (!v) setSelected(null); }} />
+      )}
     </div>
   );
 }

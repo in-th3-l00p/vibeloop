@@ -3,22 +3,24 @@
 import { useEffect, useState } from "react";
 import Image from "next/image";
 import { HugeiconsIcon } from "@hugeicons/react";
-import { Search01Icon, GameController01Icon, ShoppingBag02Icon } from "@hugeicons/core-free-icons";
+import { Search01Icon } from "@hugeicons/core-free-icons";
 import { CommandDialog, Command, CommandInput, CommandList, CommandEmpty, CommandGroup, CommandItem } from "@/components/ui/command";
 import { ActionButton } from "./ui/action-button";
 import { GameDialog } from "./game-dialog";
 import { ProductDialog } from "./product-dialog";
+import { PlayerDialog } from "./player-dialog";
 import { StatusDot } from "./ui/status-indicator";
 import { friendsList } from "../data/mock-players";
 import { games } from "../data/mock-games";
 import { marketplaceItems } from "../data/mock-marketplace";
 import { rarityColors } from "../lib/constants";
-import type { Game, MarketplaceItem } from "../types";
+import type { Game, MarketplaceItem, Player } from "../types";
 
 export function Search() {
   const [open, setOpen] = useState(false);
   const [selectedGame, setSelectedGame] = useState<Game | null>(null);
   const [selectedItem, setSelectedItem] = useState<MarketplaceItem | null>(null);
+  const [selectedPlayer, setSelectedPlayer] = useState<Player | null>(null);
 
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
@@ -53,7 +55,7 @@ export function Search() {
 
             <CommandGroup heading="Players">
               {friendsList.map((friend) => (
-                <CommandItem key={friend.tag} keywords={[friend.name, friend.tag]}>
+                <CommandItem key={friend.tag} keywords={[friend.name, friend.tag]} onSelect={() => { setOpen(false); setSelectedPlayer(friend); }}>
                   <div className="relative shrink-0">
                     <div className="size-5 rounded-full overflow-hidden">
                       <Image src="/background.png" alt={friend.name} fill className="object-cover" />
@@ -91,6 +93,9 @@ export function Search() {
       )}
       {selectedItem && (
         <ProductDialog item={selectedItem} open={!!selectedItem} onOpenChange={(v) => { if (!v) setSelectedItem(null); }} />
+      )}
+      {selectedPlayer && (
+        <PlayerDialog player={selectedPlayer} open={!!selectedPlayer} onOpenChange={(v) => { if (!v) setSelectedPlayer(null); }} />
       )}
     </>
   );
