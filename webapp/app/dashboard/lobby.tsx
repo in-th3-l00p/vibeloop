@@ -67,7 +67,7 @@ const mockMessages = [
 
 export function Lobby() {
   return (
-    <div className="w-full max-w-xl mt-6">
+    <div className="w-full max-w-xl lg:max-w-3xl">
       <div className="flex items-center justify-between mb-3">
         <p className="text-[11px] uppercase tracking-[0.3em] text-zinc-500">Lobby</p>
         <div className="flex items-center gap-2">
