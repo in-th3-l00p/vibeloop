@@ -2,7 +2,6 @@ import { currentUser } from "@clerk/nextjs/server";
 import Image from "next/image";
 import { HugeiconsIcon } from "@hugeicons/react";
 import {
-  GameController01Icon,
   ChartBarIncreasingIcon,
   Settings01Icon,
 } from "@hugeicons/core-free-icons";
@@ -12,6 +11,7 @@ import {
 } from "@/components/ui/card";
 import { Lobby } from "./lobby";
 import { Friends } from "./friends";
+import { Search } from "./search";
 
 export default async function Dashboard() {
   const user = await currentUser();
@@ -68,8 +68,8 @@ export default async function Dashboard() {
       </Card>
 
       <div className="grid grid-cols-4 gap-3 w-full max-w-xl mt-3">
+        <Search />
         {[
-          { icon: GameController01Icon, label: "New Lobby" },
           { icon: ChartBarIncreasingIcon, label: "Stats" },
           { icon: Settings01Icon, label: "Settings" },
         ].map(({ icon, label }) => (
