@@ -3,7 +3,6 @@ import Image from "next/image";
 import { HugeiconsIcon } from "@hugeicons/react";
 import {
   GameController01Icon,
-  UserGroupIcon,
   ChartBarIncreasingIcon,
   Settings01Icon,
 } from "@hugeicons/core-free-icons";
@@ -12,6 +11,7 @@ import {
   CardContent,
 } from "@/components/ui/card";
 import { Lobby } from "./lobby";
+import { Friends } from "./friends";
 
 export default async function Dashboard() {
   const user = await currentUser();
@@ -70,7 +70,6 @@ export default async function Dashboard() {
       <div className="grid grid-cols-4 gap-3 w-full max-w-xl mt-3">
         {[
           { icon: GameController01Icon, label: "New Lobby" },
-          { icon: UserGroupIcon, label: "Friends" },
           { icon: ChartBarIncreasingIcon, label: "Stats" },
           { icon: Settings01Icon, label: "Settings" },
         ].map(({ icon, label }) => (
@@ -82,6 +81,7 @@ export default async function Dashboard() {
             <span className="text-[11px] uppercase tracking-wider">{label}</span>
           </button>
         ))}
+        <Friends />
       </div>
 
       <Lobby />
