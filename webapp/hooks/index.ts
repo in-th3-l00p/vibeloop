@@ -7,3 +7,4 @@ export { useLobby } from "./use-lobby";
 export { useLobbyChat } from "./use-lobby-chat";
 export { useNftInventory } from "./use-nft-inventory";
 export { useProfile } from "./use-profile";
+export { useUserSearch } from "./use-user-search";

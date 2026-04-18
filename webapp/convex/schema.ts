@@ -18,7 +18,9 @@ export default defineSchema({
     .index("by_tokenIdentifier", ["tokenIdentifier"])
     .index("by_tag", ["tag"])
     .index("by_username", ["username"])
-    .index("by_walletAddress", ["walletAddress"]),
+    .index("by_walletAddress", ["walletAddress"])
+    .searchIndex("search_username", { searchField: "username" })
+    .searchIndex("search_tag", { searchField: "tag" }),
 
   userSettings: defineTable({
     userId: v.id("users"),

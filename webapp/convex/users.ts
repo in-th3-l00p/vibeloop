@@ -127,6 +127,42 @@ export const updateProfile = mutation({
   },
 });
 
+export const search = query({
+  args: {
+    query: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const trimmed = args.query.trim();
+    if (trimmed.length === 0) {
+      return [];
+    }
+
+    // Search by username
+    const byUsername = await ctx.db
+      .query("users")
+      .withSearchIndex("search_username", (q) => q.search("username", trimmed))
+      .take(10);
+
+    // Search by tag
+    const byTag = await ctx.db
+      .query("users")
+      .withSearchIndex("search_tag", (q) => q.search("tag", trimmed))
+      .take(10);
+
+    // Deduplicate by _id
+    const seen = new Set<string>();
+    const results = [];
+    for (const user of [...byUsername, ...byTag]) {
+      if (!seen.has(user._id)) {
+        seen.add(user._id);
+        results.push(user);
+      }
+    }
+
+    return results.slice(0, 10);
+  },
+});
+
 export const linkWallet = mutation({
   args: {
     walletAddress: v.string(),

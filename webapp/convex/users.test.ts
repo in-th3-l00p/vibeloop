@@ -192,6 +192,63 @@ describe("updateProfile", () => {
   });
 });
 
+describe("search", () => {
+  it("returns matching users by username", async () => {
+    const t = convexTest(schema, modules);
+    const asAlice = t.withIdentity({
+      name: "Alice",
+      preferredUsername: "alice",
+      tokenIdentifier: "clerk|alice123",
+    });
+    const asBob = t.withIdentity({
+      name: "Bob",
+      preferredUsername: "bob",
+      tokenIdentifier: "clerk|bob123",
+    });
+    await asAlice.mutation(api.users.getOrCreateUser, {});
+    await asBob.mutation(api.users.getOrCreateUser, {});
+
+    const results = await t.query(api.users.search, { query: "alice" });
+    expect(results.length).toBeGreaterThanOrEqual(1);
+    expect(results.some((u: { username: string }) => u.username === "alice")).toBe(true);
+  });
+
+  it("returns empty for no matches", async () => {
+    const t = convexTest(schema, modules);
+    const asAlice = t.withIdentity({
+      name: "Alice",
+      preferredUsername: "alice",
+      tokenIdentifier: "clerk|alice123",
+    });
+    await asAlice.mutation(api.users.getOrCreateUser, {});
+
+    const results = await t.query(api.users.search, { query: "zzzznonexistent" });
+    expect(results).toEqual([]);
+  });
+
+  it("returns empty for empty query", async () => {
+    const t = convexTest(schema, modules);
+    const results = await t.query(api.users.search, { query: "" });
+    expect(results).toEqual([]);
+  });
+
+  it("deduplicates results across username and tag", async () => {
+    const t = convexTest(schema, modules);
+    const asAlice = t.withIdentity({
+      name: "Alice",
+      preferredUsername: "alice",
+      tokenIdentifier: "clerk|alice123",
+    });
+    await asAlice.mutation(api.users.getOrCreateUser, {});
+
+    // "alice" matches both username and tag
+    const results = await t.query(api.users.search, { query: "alice" });
+    const ids = results.map((u: { _id: string }) => u._id);
+    const uniqueIds = new Set(ids);
+    expect(ids.length).toBe(uniqueIds.size);
+  });
+});
+
 describe("linkWallet", () => {
   it("stores wallet address", async () => {
     const t = convexTest(schema, modules);
