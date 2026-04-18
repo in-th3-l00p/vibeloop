@@ -14,7 +14,7 @@ export const ActionButton = forwardRef<
     whileHover={{ y: -2 }}
     whileTap={{ scale: 0.95 }}
     transition={{ duration: 0.15, ease: [0.25, 1, 0.5, 1] }}
-    className={`cursor-pointer flex flex-col items-center gap-2 rounded-lg bg-card ring-1 ring-border py-4 text-muted-foreground transition-colors duration-300 hover:text-white ${className ?? ""}`}
+    className={`w-full cursor-pointer flex flex-col items-center gap-2 rounded-lg bg-card ring-1 ring-border py-4 text-muted-foreground transition-colors duration-300 hover:text-white ${className ?? ""}`}
   >
     <HugeiconsIcon icon={icon} size={22} />
     <span className="text-[11px] uppercase tracking-wider">{label}</span>

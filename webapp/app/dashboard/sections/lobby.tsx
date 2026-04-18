@@ -15,12 +15,18 @@ import { InviteDialog } from "../components/invite-dialog";
 import { PlayerDialog } from "../components/player-dialog";
 import { LobbySkeleton } from "../components/ui/skeleton-primitives";
 import type { Player } from "../types";
+import type { Id } from "@/convex/_generated/dataModel";
+
+interface SelectedPlayer {
+  player: Player;
+  userId?: Id<"users">;
+}
 
 export function Lobby() {
   const { settings } = useDashboard();
   const { compactMode, glowEffects } = settings;
   const cardW = compactMode ? "w-32" : "w-40";
-  const [selected, setSelected] = useState<Player | null>(null);
+  const [selected, setSelected] = useState<SelectedPlayer | null>(null);
 
   const { myLobby, isLoading } = useLobby();
   const lobbyId = myLobby?.lobby?._id ?? null;
@@ -35,6 +41,7 @@ export function Lobby() {
         bio: m.user.bio,
         status: m.membership.role === "host" ? "ready" : "idle",
         banner: m.user.banner,
+        userId: m.user._id as Id<"users">,
       }))
     : [];
 
@@ -117,7 +124,7 @@ export function Lobby() {
         {players.map((player) => (
           <motion.button
             key={player.name}
-            onClick={() => setSelected(player)}
+            onClick={() => setSelected({ player, userId: player.userId })}
             whileHover={{ y: -3 }}
             whileTap={{ scale: 0.97 }}
             transition={{ duration: 0.2, ease: [0.25, 1, 0.5, 1] }}
@@ -152,7 +159,7 @@ export function Lobby() {
       </ScrollRow>
 
       {selected && (
-        <PlayerDialog player={selected} open={!!selected} onOpenChange={(v) => { if (!v) setSelected(null); }} />
+        <PlayerDialog player={selected.player} userId={selected.userId} open={!!selected} onOpenChange={(v) => { if (!v) setSelected(null); }} />
       )}
     </div>
   );

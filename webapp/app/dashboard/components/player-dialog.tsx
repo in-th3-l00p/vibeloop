@@ -3,23 +3,50 @@
 import Image from "next/image";
 import { motion } from "motion/react";
 import { HugeiconsIcon } from "@hugeicons/react";
-import { UserAdd01Icon, BubbleChatIcon, GameController01Icon } from "@hugeicons/core-free-icons";
+import {
+  UserAdd01Icon,
+  UserRemove01Icon,
+  BubbleChatIcon,
+  GameController01Icon,
+  Tick02Icon,
+  Cancel01Icon,
+  TimerIcon,
+} from "@hugeicons/core-free-icons";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { StatusDot, StatusLabel } from "./ui/status-indicator";
+import { useRelationship } from "@/hooks/use-relationship";
+import type { Id } from "@/convex/_generated/dataModel";
 import type { Player } from "../types";
 
 const ease = [0.25, 1, 0.5, 1] as const;
 
-export function PlayerDialog({
-  player,
-  open,
-  onOpenChange,
-}: {
+export interface PlayerDialogProps {
+  /** Basic display data — always required */
   player: Player;
+  /** Convex user ID — when provided, enables friendship actions */
+  userId?: Id<"users">;
   open: boolean;
   onOpenChange: (open: boolean) => void;
-}) {
+}
+
+export function PlayerDialog({ player, userId, open, onOpenChange }: PlayerDialogProps) {
   const status = (player.status ?? "offline") as "online" | "in-game" | "offline" | "ready" | "idle";
+  const {
+    relationship,
+    isLoading: relLoading,
+    sendRequest,
+    acceptRequest,
+    declineRequest,
+    cancelRequest,
+    removeFriend,
+  } = useRelationship(userId ?? null);
+
+  const isSelf = relationship?.kind === "self";
+  const isFriend = relationship?.kind === "friends";
+  const isPendingOutgoing = relationship?.kind === "pending" && relationship.direction === "outgoing";
+  const isPendingIncoming = relationship?.kind === "pending" && relationship.direction === "incoming";
+  const isStranger = relationship?.kind === "none";
+  const showStatus = isSelf || isFriend;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -32,7 +59,7 @@ export function PlayerDialog({
             animate={{ scale: 1, opacity: 1 }}
             transition={{ duration: 0.35, delay: 0.1, ease }}
             className="relative size-16 rounded-full overflow-hidden ring-4 ring-card mb-3"
-            style={{ outline: `3px solid ${player.accent}` }}
+            style={{ boxShadow: `0 0 0 3px ${player.accent}` }}
           >
             <Image src="/background.png" alt={player.name} fill className="object-cover" />
           </motion.div>
@@ -45,8 +72,12 @@ export function PlayerDialog({
               className="flex items-center gap-2"
             >
               <DialogTitle className="text-base font-bold" style={{ color: player.accent }}>{player.name}</DialogTitle>
-              <StatusDot status={status} size="md" />
-              <StatusLabel status={status} />
+              {showStatus && (
+                <>
+                  <StatusDot status={status} size="md" />
+                  <StatusLabel status={status} />
+                </>
+              )}
             </motion.div>
             <DialogDescription>@{player.tag}</DialogDescription>
           </DialogHeader>
@@ -57,50 +88,121 @@ export function PlayerDialog({
             transition={{ duration: 0.3, delay: 0.25 }}
             className="text-sm text-muted-foreground mb-4"
           >
-            {player.bio}
+            {player.bio || "No description yet."}
           </motion.p>
 
-          <motion.div
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.35, delay: 0.3, ease }}
-            className="grid grid-cols-3 gap-2 mb-4"
-          >
-            <div className="rounded-lg bg-secondary ring-1 ring-border px-2.5 py-2 text-center">
-              <p className="text-sm font-bold text-foreground">47</p>
-              <p className="text-[9px] text-muted-foreground uppercase tracking-wider">Games</p>
-            </div>
-            <div className="rounded-lg bg-secondary ring-1 ring-border px-2.5 py-2 text-center">
-              <p className="text-sm font-bold text-foreground">28</p>
-              <p className="text-[9px] text-muted-foreground uppercase tracking-wider">Wins</p>
-            </div>
-            <div className="rounded-lg bg-secondary ring-1 ring-border px-2.5 py-2 text-center">
-              <p className="text-sm font-bold" style={{ color: player.accent }}>60%</p>
-              <p className="text-[9px] text-muted-foreground uppercase tracking-wider">Win Rate</p>
-            </div>
-          </motion.div>
-
-          <motion.div
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.35, delay: 0.4, ease }}
-            className="flex gap-2"
-          >
-            <motion.button
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.97 }}
-              className="cursor-pointer flex-1 flex items-center justify-center gap-2 rounded-lg bg-primary text-primary-foreground py-2.5 text-xs font-medium"
+          {/* Stats — only visible for self or friends */}
+          {showStatus && (
+            <motion.div
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.35, delay: 0.3, ease }}
+              className="grid grid-cols-3 gap-2 mb-4"
             >
-              <HugeiconsIcon icon={GameController01Icon} size={14} />
-              Invite to Lobby
-            </motion.button>
-            <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.93 }} className="cursor-pointer flex items-center justify-center rounded-lg bg-secondary text-secondary-foreground ring-1 ring-border px-3 py-2.5">
-              <HugeiconsIcon icon={BubbleChatIcon} size={14} />
-            </motion.button>
-            <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.93 }} className="cursor-pointer flex items-center justify-center rounded-lg bg-secondary text-secondary-foreground ring-1 ring-border px-3 py-2.5">
-              <HugeiconsIcon icon={UserAdd01Icon} size={14} />
-            </motion.button>
-          </motion.div>
+              <div className="rounded-lg bg-secondary ring-1 ring-border px-2.5 py-2 text-center">
+                <p className="text-sm font-bold text-foreground">—</p>
+                <p className="text-[9px] text-muted-foreground uppercase tracking-wider">Games</p>
+              </div>
+              <div className="rounded-lg bg-secondary ring-1 ring-border px-2.5 py-2 text-center">
+                <p className="text-sm font-bold text-foreground">—</p>
+                <p className="text-[9px] text-muted-foreground uppercase tracking-wider">Wins</p>
+              </div>
+              <div className="rounded-lg bg-secondary ring-1 ring-border px-2.5 py-2 text-center">
+                <p className="text-sm font-bold" style={{ color: player.accent }}>—</p>
+                <p className="text-[9px] text-muted-foreground uppercase tracking-wider">Win Rate</p>
+              </div>
+            </motion.div>
+          )}
+
+          {/* Action buttons — context-dependent */}
+          {!isSelf && !relLoading && userId && (
+            <motion.div
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.35, delay: 0.4, ease }}
+              className="flex gap-2"
+            >
+              {/* === FRIENDS === */}
+              {isFriend && (
+                <>
+                  <motion.button
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.97 }}
+                    className="cursor-pointer flex-1 flex items-center justify-center gap-2 rounded-lg bg-primary text-primary-foreground py-2.5 text-xs font-medium"
+                  >
+                    <HugeiconsIcon icon={GameController01Icon} size={14} />
+                    Invite to Lobby
+                  </motion.button>
+                  <motion.button
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.93 }}
+                    className="cursor-pointer flex items-center justify-center rounded-lg bg-secondary text-secondary-foreground ring-1 ring-border px-3 py-2.5"
+                  >
+                    <HugeiconsIcon icon={BubbleChatIcon} size={14} />
+                  </motion.button>
+                  <motion.button
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.93 }}
+                    onClick={() => removeFriend(relationship!.friendshipId!)}
+                    className="cursor-pointer flex items-center justify-center rounded-lg bg-secondary text-destructive ring-1 ring-border px-3 py-2.5"
+                    title="Remove friend"
+                  >
+                    <HugeiconsIcon icon={UserRemove01Icon} size={14} />
+                  </motion.button>
+                </>
+              )}
+
+              {/* === STRANGER === */}
+              {isStranger && (
+                <motion.button
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.97 }}
+                  onClick={sendRequest}
+                  className="cursor-pointer flex-1 flex items-center justify-center gap-2 rounded-lg bg-primary text-primary-foreground py-2.5 text-xs font-medium"
+                >
+                  <HugeiconsIcon icon={UserAdd01Icon} size={14} />
+                  Add Friend
+                </motion.button>
+              )}
+
+              {/* === PENDING OUTGOING === */}
+              {isPendingOutgoing && (
+                <motion.button
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.97 }}
+                  onClick={() => cancelRequest(relationship!.friendshipId!)}
+                  className="cursor-pointer flex-1 flex items-center justify-center gap-2 rounded-lg bg-secondary text-muted-foreground ring-1 ring-border py-2.5 text-xs font-medium"
+                >
+                  <HugeiconsIcon icon={TimerIcon} size={14} />
+                  Cancel Request
+                </motion.button>
+              )}
+
+              {/* === PENDING INCOMING === */}
+              {isPendingIncoming && (
+                <>
+                  <motion.button
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.97 }}
+                    onClick={() => acceptRequest(relationship!.friendshipId!)}
+                    className="cursor-pointer flex-1 flex items-center justify-center gap-2 rounded-lg bg-primary text-primary-foreground py-2.5 text-xs font-medium"
+                  >
+                    <HugeiconsIcon icon={Tick02Icon} size={14} />
+                    Accept
+                  </motion.button>
+                  <motion.button
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.97 }}
+                    onClick={() => declineRequest(relationship!.friendshipId!)}
+                    className="cursor-pointer flex-1 flex items-center justify-center gap-2 rounded-lg bg-secondary text-destructive ring-1 ring-border py-2.5 text-xs font-medium"
+                  >
+                    <HugeiconsIcon icon={Cancel01Icon} size={14} />
+                    Decline
+                  </motion.button>
+                </>
+              )}
+            </motion.div>
+          )}
         </div>
       </DialogContent>
     </Dialog>

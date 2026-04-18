@@ -14,6 +14,7 @@ import { useGames } from "@/hooks/use-games";
 import { useMarketplace } from "@/hooks/use-marketplace";
 import { rarityColors } from "../lib/constants";
 import type { Game, MarketplaceItem, Player } from "../types";
+import type { Id } from "@/convex/_generated/dataModel";
 
 function matchesQuery(text: string, query: string) {
   return text.toLowerCase().includes(query.toLowerCase());
@@ -24,7 +25,7 @@ export function Search() {
   const [inputValue, setInputValue] = useState("");
   const [selectedGame, setSelectedGame] = useState<Game | null>(null);
   const [selectedItem, setSelectedItem] = useState<MarketplaceItem | null>(null);
-  const [selectedPlayer, setSelectedPlayer] = useState<Player | null>(null);
+  const [selectedPlayer, setSelectedPlayer] = useState<{ player: Player; userId: Id<"users"> } | null>(null);
 
   const deferredQuery = useDeferredValue(inputValue);
   const { results: userResults, isLoading: searchLoading } = useUserSearch(deferredQuery);
@@ -107,12 +108,15 @@ export function Search() {
                       onSelect={() => {
                         setOpen(false);
                         setSelectedPlayer({
-                          name: user.username,
-                          tag: user.tag,
-                          accent: user.accent,
-                          bio: user.bio,
-                          status: "offline",
-                          banner: user.banner,
+                          player: {
+                            name: user.username,
+                            tag: user.tag,
+                            accent: user.accent,
+                            bio: user.bio,
+                            status: "offline",
+                            banner: user.banner,
+                          },
+                          userId: user._id,
                         });
                       }}
                     >
@@ -164,7 +168,7 @@ export function Search() {
         <ProductDialog item={selectedItem} open={!!selectedItem} onOpenChange={(v) => { if (!v) setSelectedItem(null); }} />
       )}
       {selectedPlayer && (
-        <PlayerDialog player={selectedPlayer} open={!!selectedPlayer} onOpenChange={(v) => { if (!v) setSelectedPlayer(null); }} />
+        <PlayerDialog player={selectedPlayer.player} userId={selectedPlayer.userId} open={!!selectedPlayer} onOpenChange={(v) => { if (!v) setSelectedPlayer(null); }} />
       )}
     </>
   );
