@@ -164,6 +164,44 @@ export const cancel = mutation({
   },
 });
 
+export const listSentInvitations = query({
+  args: {},
+  handler: async (ctx) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      return [];
+    }
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_tokenIdentifier", (q) =>
+        q.eq("tokenIdentifier", identity.tokenIdentifier),
+      )
+      .unique();
+    if (!user) {
+      return [];
+    }
+
+    const invitations = await ctx.db
+      .query("lobbyInvitations")
+      .withIndex("by_fromUserId", (q) => q.eq("fromUserId", user._id))
+      .take(50);
+
+    const pending = invitations.filter((inv) => inv.status === "pending");
+
+    const results = [];
+    for (const inv of pending) {
+      const target = await ctx.db.get(inv.toUserId);
+      if (!target) continue;
+      const cardTheme = await getUserCardTheme(ctx, inv.toUserId);
+      results.push({
+        invitation: inv,
+        user: { ...target, cardTheme },
+      });
+    }
+    return results;
+  },
+});
+
 export const listMyInvitations = query({
   args: {},
   handler: async (ctx) => {

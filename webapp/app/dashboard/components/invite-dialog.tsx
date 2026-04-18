@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Image from "next/image";
 import { HugeiconsIcon } from "@hugeicons/react";
-import { Search01Icon, Tick02Icon, SentIcon, Cancel01Icon } from "@hugeicons/core-free-icons";
+import { Search01Icon, Tick02Icon, SentIcon, Cancel01Icon, TimerIcon } from "@hugeicons/core-free-icons";
 import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { StatusDot } from "./ui/status-indicator";
 import { useFriends } from "@/hooks/use-friends";
@@ -16,13 +16,17 @@ const statusOrder = { online: 0, "in-game": 1, offline: 2 } as const;
 
 export function InviteDialog({ children }: { children: React.ReactNode }) {
   const { friends, isLoading } = useFriends();
-  const { lobbyId } = useLobby();
-  const { invitations, accept, decline } = useLobbyInvitations();
-  const sendInvite = useLobbyInvitations().send;
+  const { myLobby, lobbyId } = useLobby();
+  const { invitations, sentInvitations, accept, decline, cancel, hasPendingInvite, send: sendInvite } = useLobbyInvitations();
 
   const [search, setSearch] = useState("");
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [sent, setSent] = useState(false);
+
+  // IDs of users already in the lobby
+  const lobbyMemberIds = new Set(
+    (myLobby?.members ?? []).map((m) => m.user._id as string),
+  );
 
   const sorted = [...friends].sort(
     (a, b) =>
@@ -30,13 +34,17 @@ export function InviteDialog({ children }: { children: React.ReactNode }) {
       (statusOrder[b.presence.status as keyof typeof statusOrder] ?? 2),
   );
 
-  const filtered = sorted.filter(
-    (f) =>
-      f.user.username.toLowerCase().includes(search.toLowerCase()) ||
-      f.user.tag.toLowerCase().includes(search.toLowerCase()),
-  );
+  // Filter out friends already in the lobby
+  const filtered = sorted
+    .filter((f) => !lobbyMemberIds.has(f.user._id as string))
+    .filter(
+      (f) =>
+        f.user.username.toLowerCase().includes(search.toLowerCase()) ||
+        f.user.tag.toLowerCase().includes(search.toLowerCase()),
+    );
 
   function toggle(id: string) {
+    if (hasPendingInvite(id)) return;
     setSelected((prev) => {
       const next = new Set(prev);
       if (next.has(id)) next.delete(id);
@@ -51,7 +59,7 @@ export function InviteDialog({ children }: { children: React.ReactNode }) {
       try {
         await sendInvite(lobbyId, userId as any);
       } catch {
-        // skip already-invited or already-in-lobby
+        // skip errors
       }
     }
     setSent(true);
@@ -128,6 +136,48 @@ export function InviteDialog({ children }: { children: React.ReactNode }) {
           </div>
         )}
 
+        {/* Sent Invitations */}
+        {sentInvitations.length > 0 && (
+          <div className="px-4 pb-2 shrink-0">
+            <p className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground mb-1.5">
+              Sent ({sentInvitations.length})
+            </p>
+            <div className="space-y-1">
+              {sentInvitations.map((inv) => {
+                const pc = getProfileCardById(inv.user.cardTheme);
+                return (
+                  <div
+                    key={inv.invitation._id}
+                    className="flex items-center gap-3 rounded-lg px-3 py-2"
+                    style={{ backgroundColor: pc.nameBg, border: `1px solid ${pc.borderColor}` }}
+                  >
+                    <div className="relative size-8 rounded-full overflow-hidden shrink-0" style={{ boxShadow: `0 0 0 2px ${pc.avatarRing}` }}>
+                      {inv.user.imageUrl ? (
+                        <Image src={inv.user.imageUrl} alt={inv.user.username} fill className="object-cover rounded-full" />
+                      ) : (
+                        <Image src="/background.png" alt={inv.user.username} fill className="object-cover rounded-full" />
+                      )}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-xs font-semibold truncate" style={{ color: pc.nameColor }}>{inv.user.username}</p>
+                      <p className="text-[9px] truncate" style={{ color: pc.tagColor }}>@{inv.user.tag}</p>
+                    </div>
+                    <button
+                      onClick={() => cancel(inv.invitation._id)}
+                      className="cursor-pointer flex items-center gap-1 rounded-md px-2 py-1 text-[9px] uppercase tracking-wider transition-all hover:opacity-80"
+                      style={{ backgroundColor: `${pc.borderColor}`, color: pc.tagColor, border: `1px solid ${pc.divider}` }}
+                      title="Cancel invite"
+                    >
+                      <HugeiconsIcon icon={TimerIcon} size={10} />
+                      Cancel
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
         <div className="px-4 pb-2 shrink-0">
           <div className="flex items-center gap-2 rounded-lg bg-secondary ring-1 ring-border px-3 py-2 focus-within:ring-ring">
             <HugeiconsIcon icon={Search01Icon} size={14} className="text-muted-foreground shrink-0" />
@@ -145,22 +195,26 @@ export function InviteDialog({ children }: { children: React.ReactNode }) {
           {isLoading ? (
             <FriendsSkeleton />
           ) : filtered.length === 0 ? (
-            <p className="text-center text-muted-foreground text-xs py-6">No friends found</p>
+            <p className="text-center text-muted-foreground text-xs py-6">
+              {friends.length === 0 ? "No friends yet" : "All friends are in your lobby or invited"}
+            </p>
           ) : (
             filtered.map((f) => {
               const friend = f.user;
               const status = f.presence.status;
               const isSelected = selected.has(friend._id);
               const isOffline = status === "offline";
+              const isPending = hasPendingInvite(friend._id);
+              const isDisabled = isOffline || isPending;
               const pc = getProfileCardById(friend.cardTheme);
               return (
                 <button
                   key={friend._id}
-                  onClick={() => !isOffline && toggle(friend._id)}
-                  disabled={isOffline}
+                  onClick={() => !isDisabled && toggle(friend._id)}
+                  disabled={isDisabled}
                   className={`cursor-pointer w-full flex items-center gap-3 rounded-lg px-3 py-2.5 transition-all duration-200 ${
                     isSelected ? "ring-1 ring-primary/30" : "hover:brightness-125"
-                  } ${isOffline ? "opacity-40 cursor-not-allowed" : ""}`}
+                  } ${isDisabled ? "opacity-40 cursor-not-allowed" : ""}`}
                   style={{ backgroundColor: pc.nameBg, border: `1px solid ${isSelected ? pc.avatarRing : pc.borderColor}` }}
                 >
                   <div className="relative shrink-0">
@@ -182,14 +236,16 @@ export function InviteDialog({ children }: { children: React.ReactNode }) {
                   <div className="min-w-0 flex-1 text-left">
                     <p
                       className="text-sm font-semibold truncate"
-                      style={{ color: isOffline ? pc.tagColor : pc.nameColor }}
+                      style={{ color: isDisabled ? pc.tagColor : pc.nameColor }}
                     >
                       {friend.username}
                     </p>
                     <p className="text-[10px] truncate" style={{ color: pc.tagColor }}>@{friend.tag}</p>
                   </div>
 
-                  {isOffline ? (
+                  {isPending ? (
+                    <span className="text-[9px] text-muted-foreground uppercase tracking-wider">invited</span>
+                  ) : isOffline ? (
                     <span className="text-[9px] text-muted-foreground uppercase tracking-wider">offline</span>
                   ) : (
                     <div
