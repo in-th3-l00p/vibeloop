@@ -8,6 +8,9 @@ import { BubbleChatIcon, Add01Icon, Crown02Icon, UserIcon, UserRemove01Icon } fr
 import { Sheet, SheetTrigger, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { ContextMenu, ContextMenuTrigger, ContextMenuContent, ContextMenuItem, ContextMenuSeparator } from "@/components/ui/context-menu";
+import { useRouter } from "next/navigation";
+import { useQuery } from "convex/react";
+import { api } from "@/convex/_generated/api";
 import { useDashboard } from "../dashboard-context";
 import { useLobby } from "@/hooks/use-lobby";
 import { useLobbyChat } from "@/hooks/use-lobby-chat";
@@ -35,8 +38,10 @@ export function Lobby() {
   const [editingName, setEditingName] = useState(false);
   const [draftName, setDraftName] = useState("");
   const [kickTarget, setKickTarget] = useState<{ userId: Id<"users">; name: string } | null>(null);
+  const router = useRouter();
 
   const { user: currentUser } = useCurrentUser();
+  const activeSession = useQuery(api.sessions.getMySession);
   const { myLobby, lobbyId, isLoading, isHost, isSolo, createNew, rename, kick, transferHost } = useLobby();
   const { messages: liveMessages, send } = useLobbyChat(lobbyId);
   const [chatInput, setChatInput] = useState("");
@@ -210,6 +215,37 @@ export function Lobby() {
           </Dialog>
         </div>
       </div>
+
+      {/* Active game rejoin card */}
+      {activeSession && activeSession.session.status === "playing" && (
+        <motion.div
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mb-3 rounded-xl bg-emerald-500/5 ring-1 ring-emerald-500/20 p-3 flex items-center justify-between"
+        >
+          <div className="flex items-center gap-3">
+            <span className="text-xl">♠</span>
+            <div>
+              <p className="text-sm font-bold text-emerald-400">
+                {activeSession.session.gameName} in progress
+              </p>
+              <p className="text-[10px] text-muted-foreground">
+                You have an active game session
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={() =>
+              router.push(
+                `/dashboard/poker?session=${activeSession.session._id}`,
+              )
+            }
+            className="cursor-pointer text-[10px] uppercase tracking-wider text-emerald-400 rounded-lg px-3 py-2 bg-emerald-500/10 ring-1 ring-emerald-500/30 transition-all hover:bg-emerald-500/20"
+          >
+            Rejoin Game
+          </button>
+        </motion.div>
+      )}
 
       <ScrollRow>
         {players.map((player) => {

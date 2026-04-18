@@ -1,5 +1,5 @@
 import { v } from "convex/values";
-import { query, internalMutation } from "./_generated/server";
+import { query, mutation, internalMutation } from "./_generated/server";
 
 export const list = query({
   args: {},
@@ -28,6 +28,27 @@ export const listByTag = query({
   },
 });
 
+export const ensureTexasHoldem = mutation({
+  args: {},
+  handler: async (ctx) => {
+    const existing = await ctx.db
+      .query("games")
+      .withIndex("by_name", (q) => q.eq("name", "Texas Hold'em"))
+      .unique();
+    if (existing) return existing._id;
+
+    return await ctx.db.insert("games", {
+      name: "Texas Hold'em",
+      desc: "Classic poker. Bluff, bet, and read your opponents.",
+      players: "2–8",
+      tag: "strategy",
+      accent: "#16a34a",
+      gradient: "linear-gradient(135deg, #15803d, #166534)",
+      emoji: "♠️",
+    });
+  },
+});
+
 export const seed = internalMutation({
   args: {},
   handler: async (ctx) => {
@@ -47,6 +68,7 @@ export const seed = internalMutation({
       { name: "Gridlock", desc: "Claim tiles. Block your opponents. Dominate the board.", players: "2–4", tag: "strategy", accent: "#2dd4bf", gradient: "linear-gradient(135deg, #0d9488, #14b8a6)", emoji: "🧩" },
       { name: "Meme Wars", desc: "Caption the image. Funniest one wins the round.", players: "3–10", tag: "party", accent: "#f472b6", gradient: "linear-gradient(135deg, #db2777, #ec4899)", emoji: "😂" },
       { name: "Beat Drop", desc: "Tap to the rhythm. Stay on beat or lose.", players: "2–6", tag: "music", accent: "#e879f9", gradient: "linear-gradient(135deg, #a21caf, #d946ef)", emoji: "🎵" },
+      { name: "Texas Hold'em", desc: "Classic poker. Bluff, bet, and read your opponents.", players: "2–8", tag: "strategy", accent: "#16a34a", gradient: "linear-gradient(135deg, #15803d, #166534)", emoji: "♠️" },
     ];
 
     for (const game of games) {

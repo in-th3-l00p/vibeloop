@@ -181,4 +181,60 @@ export default defineSchema({
     lastBlockSynced: v.number(),
     lastSyncedAt: v.number(),
   }).index("by_contractAddress", ["contractAddress"]),
+
+  pokerState: defineTable({
+    sessionId: v.id("gameSessions"),
+    phase: v.union(
+      v.literal("preflop"),
+      v.literal("flop"),
+      v.literal("turn"),
+      v.literal("river"),
+      v.literal("showdown"),
+      v.literal("handComplete"),
+    ),
+    players: v.array(
+      v.object({
+        userId: v.id("users"),
+        chips: v.number(),
+        holeCards: v.array(v.string()),
+        currentBet: v.number(),
+        totalBetThisRound: v.number(),
+        folded: v.boolean(),
+        allIn: v.boolean(),
+        eliminated: v.boolean(),
+        seatIndex: v.number(),
+      }),
+    ),
+    communityCards: v.array(v.string()),
+    deck: v.array(v.string()),
+    pots: v.array(
+      v.object({
+        amount: v.number(),
+        eligible: v.array(v.id("users")),
+      }),
+    ),
+    currentPlayerIndex: v.number(),
+    dealerIndex: v.number(),
+    smallBlind: v.number(),
+    bigBlind: v.number(),
+    lastRaiseAmount: v.number(),
+    minRaise: v.number(),
+    handNumber: v.number(),
+    lastAction: v.optional(
+      v.object({
+        userId: v.id("users"),
+        action: v.string(),
+        amount: v.optional(v.number()),
+      }),
+    ),
+    winnersLastHand: v.optional(
+      v.array(
+        v.object({
+          userId: v.id("users"),
+          amount: v.number(),
+          handName: v.string(),
+        }),
+      ),
+    ),
+  }).index("by_sessionId", ["sessionId"]),
 });

@@ -1,8 +1,12 @@
 "use client";
 
+import { useState } from "react";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { GameController01Icon } from "@hugeicons/core-free-icons";
+import { useMutation } from "convex/react";
+import { api } from "@/convex/_generated/api";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { useDashboard } from "../dashboard-context";
 import { useGameStats } from "@/hooks/use-game-stats";
@@ -21,7 +25,15 @@ export function GameDialog({
   const { settings, user } = useDashboard();
   const { glowEffects } = settings;
   const { stats } = useGameStats();
-  const { myLobby } = useLobby();
+  const { myLobby, isHost, memberCount } = useLobby();
+  const router = useRouter();
+  const [starting, setStarting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const createSession = useMutation(api.sessions.create);
+  const joinSession = useMutation(api.sessions.join);
+  const setReady = useMutation(api.sessions.setReady);
+  const startSession = useMutation(api.sessions.start);
+  const initPoker = useMutation(api.poker.mutations.initializePokerGame);
 
   const stat = stats.find((s) => s.gameName === game.name);
   const rate = stat && stat.played > 0 ? Math.round((stat.wins / stat.played) * 100) : null;
@@ -105,9 +117,59 @@ export function GameDialog({
             </div>
           )}
 
-          <button className="cursor-pointer w-full flex items-center justify-center gap-2 rounded-lg bg-primary text-primary-foreground py-2.5 text-xs font-medium transition-all duration-200 hover:opacity-90">
+          {error && (
+            <p className="text-xs text-red-400 text-center">{error}</p>
+          )}
+
+          <button
+            disabled={starting || !isHost || memberCount < 2}
+            onClick={async () => {
+              if (!myLobby?.lobby) return;
+              setStarting(true);
+              setError(null);
+              try {
+                // Create session
+                const sessionId = await createSession({
+                  lobbyId: myLobby.lobby._id,
+                  gameName: game.name,
+                  maxPlayers: 8,
+                });
+
+                // Auto-join all lobby members + set ready
+                for (const m of myLobby.members) {
+                  try {
+                    await joinSession({ sessionId });
+                  } catch { /* already joined */ }
+                  try {
+                    await setReady({ sessionId });
+                  } catch { /* already ready */ }
+                }
+
+                // Start the session
+                await startSession({ sessionId });
+
+                // Initialize poker if it's Texas Hold'em
+                if (game.name === "Texas Hold'em") {
+                  await initPoker({ sessionId });
+                  onOpenChange(false);
+                  router.push(`/dashboard/poker?session=${sessionId}`);
+                }
+              } catch (err: any) {
+                setError(err.message ?? "Failed to start game");
+              } finally {
+                setStarting(false);
+              }
+            }}
+            className="cursor-pointer w-full flex items-center justify-center gap-2 rounded-lg bg-primary text-primary-foreground py-2.5 text-xs font-medium transition-all duration-200 hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed"
+          >
             <HugeiconsIcon icon={GameController01Icon} size={14} />
-            Play Now
+            {starting
+              ? "Starting..."
+              : !isHost
+                ? "Only host can start"
+                : memberCount < 2
+                  ? "Need 2+ players"
+                  : "Play Now"}
           </button>
         </div>
       </DialogContent>
