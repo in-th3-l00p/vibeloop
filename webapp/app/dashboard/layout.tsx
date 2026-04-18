@@ -11,7 +11,7 @@ export default async function DashboardLayout({
 
   return (
     <DashboardShell
-      user={{
+      clerkUser={{
         username: user?.username ?? "player",
         fullName: user?.fullName ?? "Anonymous Player",
         imageUrl: user?.imageUrl ?? "",

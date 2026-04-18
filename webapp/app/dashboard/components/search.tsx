@@ -10,7 +10,7 @@ import { GameDialog } from "./game-dialog";
 import { ProductDialog } from "./product-dialog";
 import { PlayerDialog } from "./player-dialog";
 import { StatusDot } from "./ui/status-indicator";
-import { friendsList } from "../data/mock-players";
+import { useFriends } from "@/hooks/use-friends";
 import { games } from "../data/mock-games";
 import { marketplaceItems } from "../data/mock-marketplace";
 import { rarityColors } from "../lib/constants";
@@ -21,6 +21,7 @@ export function Search() {
   const [selectedGame, setSelectedGame] = useState<Game | null>(null);
   const [selectedItem, setSelectedItem] = useState<MarketplaceItem | null>(null);
   const [selectedPlayer, setSelectedPlayer] = useState<Player | null>(null);
+  const { friends } = useFriends();
 
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
@@ -53,20 +54,44 @@ export function Search() {
               ))}
             </CommandGroup>
 
-            <CommandGroup heading="Players">
-              {friendsList.map((friend) => (
-                <CommandItem key={friend.tag} keywords={[friend.name, friend.tag]} onSelect={() => { setOpen(false); setSelectedPlayer(friend); }}>
-                  <div className="relative shrink-0">
-                    <div className="size-5 rounded-full overflow-hidden">
-                      <Image src="/background.png" alt={friend.name} fill className="object-cover" />
-                    </div>
-                    <span className="absolute -bottom-0.5 -right-0.5"><StatusDot status={friend.status} /></span>
-                  </div>
-                  <span className="flex-1" style={{ color: friend.status === "offline" ? undefined : friend.accent }}>{friend.name}</span>
-                  <span className="text-[9px] text-muted-foreground">@{friend.tag}</span>
-                </CommandItem>
-              ))}
-            </CommandGroup>
+            {friends.length > 0 && (
+              <CommandGroup heading="Friends">
+                {friends.map((f) => {
+                  const friend = f.user;
+                  const status = f.presence.status;
+                  return (
+                    <CommandItem
+                      key={friend._id}
+                      keywords={[friend.username, friend.tag]}
+                      onSelect={() => {
+                        setOpen(false);
+                        setSelectedPlayer({
+                          name: friend.username,
+                          tag: friend.tag,
+                          accent: friend.accent,
+                          bio: friend.bio,
+                          status,
+                          banner: friend.banner,
+                        });
+                      }}
+                    >
+                      <div className="relative shrink-0">
+                        <div className="size-5 rounded-full overflow-hidden">
+                          {friend.imageUrl ? (
+                            <Image src={friend.imageUrl} alt={friend.username} fill className="object-cover" />
+                          ) : (
+                            <Image src="/background.png" alt={friend.username} fill className="object-cover" />
+                          )}
+                        </div>
+                        <span className="absolute -bottom-0.5 -right-0.5"><StatusDot status={status} /></span>
+                      </div>
+                      <span className="flex-1" style={{ color: status === "offline" ? undefined : friend.accent }}>{friend.username}</span>
+                      <span className="text-[9px] text-muted-foreground">@{friend.tag}</span>
+                    </CommandItem>
+                  );
+                })}
+              </CommandGroup>
+            )}
 
             <CommandGroup heading="Marketplace">
               {marketplaceItems.map((item) => {

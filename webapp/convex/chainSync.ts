@@ -1,5 +1,5 @@
 import { v } from "convex/values";
-import { action, internalQuery, internalMutation } from "./_generated/server";
+import { internalAction, internalQuery, internalMutation } from "./_generated/server";
 import { internal } from "./_generated/api";
 
 export const getSyncState = internalQuery({
@@ -45,7 +45,7 @@ export const updateSyncState = internalMutation({
 });
 
 // Placeholder action — will need Alchemy/Infura API key and contract ABI
-export const pollTransfers = action({
+export const pollTransfers = internalAction({
   args: {},
   handler: async (ctx) => {
     // TODO: Implement when contract addresses and Alchemy API key are configured
@@ -58,7 +58,7 @@ export const pollTransfers = action({
 });
 
 // Placeholder action — will need Alchemy/Infura API key and ERC-20 contract address
-export const pollVibeBalances = action({
+export const pollVibeBalances = internalAction({
   args: {},
   handler: async (ctx) => {
     // TODO: Implement when $VIBE contract address and Alchemy API key are configured

@@ -7,6 +7,7 @@ import { Settings01Icon, UserIcon, PencilEdit01Icon, ColorsIcon, Tick02Icon, Arr
 import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { useDashboard } from "../dashboard-context";
+import { useProfile } from "@/hooks/use-profile";
 import { getProfileCard, resolveWelcomeText } from "../lib/theme-utils";
 import { rarityColors } from "../lib/constants";
 import { profileCardThemes, uiThemes, titleColorPresets } from "../data/theme-presets";
@@ -16,10 +17,10 @@ import { SettingsToggle } from "./ui/settings-toggle";
 export function Settings() {
   const { openUserProfile } = useClerk();
   const { settings, user, update, reset } = useDashboard();
+  const { updateProfile } = useProfile();
   const pc = getProfileCard(settings);
-  const [description, setDescription] = useState("No description yet.");
   const [editingDesc, setEditingDesc] = useState(false);
-  const [draftDesc, setDraftDesc] = useState(description);
+  const [draftDesc, setDraftDesc] = useState(user.bio || "No description yet.");
 
   return (
     <Dialog>
@@ -70,7 +71,7 @@ export function Settings() {
                 <div className="flex items-center justify-between mb-2">
                   <p className="text-[10px] uppercase tracking-[0.2em] text-zinc-500">Description</p>
                   {!editingDesc && (
-                    <button onClick={() => { setDraftDesc(description); setEditingDesc(true); }} className="cursor-pointer text-zinc-500 hover:text-white transition-colors">
+                    <button onClick={() => { setDraftDesc(user.bio || ""); setEditingDesc(true); }} className="cursor-pointer text-zinc-500 hover:text-white transition-colors">
                       <HugeiconsIcon icon={PencilEdit01Icon} size={12} />
                     </button>
                   )}
@@ -82,12 +83,12 @@ export function Settings() {
                       <span className="text-[10px] text-zinc-600">{draftDesc.length}/120</span>
                       <div className="flex gap-2">
                         <button onClick={() => setEditingDesc(false)} className="cursor-pointer text-[10px] uppercase tracking-wider text-zinc-500 px-2.5 py-1 rounded-md hover:text-white transition-colors">Cancel</button>
-                        <button onClick={() => { setDescription(draftDesc || "No description yet."); setEditingDesc(false); }} className="cursor-pointer text-[10px] uppercase tracking-wider text-white bg-white/10 ring-1 ring-border px-2.5 py-1 rounded-md hover:bg-white/15 transition-colors">Save</button>
+                        <button onClick={() => { updateProfile({ bio: draftDesc || "" }); setEditingDesc(false); }} className="cursor-pointer text-[10px] uppercase tracking-wider text-white bg-white/10 ring-1 ring-border px-2.5 py-1 rounded-md hover:bg-white/15 transition-colors">Save</button>
                       </div>
                     </div>
                   </div>
                 ) : (
-                  <p className="text-sm text-muted-foreground rounded-lg bg-white/[0.03] ring-1 ring-white/5 px-3 py-2.5">{description}</p>
+                  <p className="text-sm text-muted-foreground rounded-lg bg-white/[0.03] ring-1 ring-white/5 px-3 py-2.5">{user.bio || "No description yet."}</p>
                 )}
               </div>
 

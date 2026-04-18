@@ -3,83 +3,75 @@
 import {
   createContext,
   useContext,
-  useState,
-  useEffect,
   type ReactNode,
 } from "react";
+import { useCurrentUser } from "@/hooks/use-current-user";
+import { useUserSettings } from "@/hooks/use-user-settings";
+import { usePresence } from "@/hooks/use-presence";
 import type { DashboardSettings } from "./types";
-
-const defaults: DashboardSettings = {
-  profileCardTheme: "default",
-  welcomeText: "Welcome, {{first_name}}",
-  titleColor: "#ffffff",
-  uiTheme: 0,
-  showWelcome: true,
-  showLobby: true,
-  showGames: true,
-  showMarketplace: true,
-  compactMode: false,
-  glowEffects: true,
-};
 
 export interface UserInfo {
   username: string;
   fullName: string;
   imageUrl: string;
   firstName: string;
+  bio: string;
+  accent: string;
+  vibeBalance: number;
+  tag: string;
 }
 
 interface DashboardContextValue {
   settings: DashboardSettings;
   user: UserInfo;
+  isLoading: boolean;
   update: <K extends keyof DashboardSettings>(key: K, value: DashboardSettings[K]) => void;
   reset: () => void;
 }
 
 const DashboardContext = createContext<DashboardContextValue | null>(null);
-const STORAGE_KEY = "vibeloop-dashboard";
 
-function loadSettings(): DashboardSettings {
-  if (typeof window === "undefined") return defaults;
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return defaults;
-    return { ...defaults, ...JSON.parse(raw) };
-  } catch {
-    return defaults;
-  }
-}
+const fallbackUser: UserInfo = {
+  username: "player",
+  fullName: "Loading...",
+  imageUrl: "",
+  firstName: "Player",
+  bio: "",
+  accent: "#a855f7",
+  vibeBalance: 0,
+  tag: "player",
+};
 
 export function DashboardProvider({
   children,
-  user,
+  clerkUser,
 }: {
   children: ReactNode;
-  user: UserInfo;
+  clerkUser: { username: string; fullName: string; imageUrl: string; firstName: string };
 }) {
-  const [settings, setSettings] = useState<DashboardSettings>(defaults);
-  const [hydrated, setHydrated] = useState(false);
+  const { user: convexUser, isLoading: userLoading } = useCurrentUser();
+  const { settings, isLoading: settingsLoading, update, reset } = useUserSettings();
 
-  useEffect(() => {
-    setSettings(loadSettings());
-    setHydrated(true);
-  }, []);
+  // Send presence heartbeat while on the dashboard
+  usePresence("online");
 
-  useEffect(() => {
-    if (!hydrated) return;
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
-  }, [settings, hydrated]);
+  const user: UserInfo = convexUser
+    ? {
+        username: convexUser.username,
+        fullName: convexUser.fullName,
+        imageUrl: convexUser.imageUrl,
+        firstName: convexUser.firstName,
+        bio: convexUser.bio,
+        accent: convexUser.accent,
+        vibeBalance: convexUser.vibeBalance,
+        tag: convexUser.tag,
+      }
+    : { ...fallbackUser, ...clerkUser };
 
-  function update<K extends keyof DashboardSettings>(key: K, value: DashboardSettings[K]) {
-    setSettings((prev) => ({ ...prev, [key]: value }));
-  }
-
-  function reset() {
-    setSettings(defaults);
-  }
+  const isLoading = userLoading || settingsLoading;
 
   return (
-    <DashboardContext.Provider value={{ settings, user, update, reset }}>
+    <DashboardContext.Provider value={{ settings, user, isLoading, update, reset }}>
       {children}
     </DashboardContext.Provider>
   );

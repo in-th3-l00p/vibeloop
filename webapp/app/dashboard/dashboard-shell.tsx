@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, useContext, useEffect, type ReactNode } from "react";
-import { DashboardProvider, useDashboard, type UserInfo } from "./dashboard-context";
+import { DashboardProvider, useDashboard } from "./dashboard-context";
 import { getActiveTheme } from "./lib/theme-utils";
 
 const FontContext = createContext("");
@@ -29,15 +29,15 @@ function ThemeApplicator({ children }: { children: ReactNode }) {
 
 export function DashboardShell({
   children,
-  user,
+  clerkUser,
   italiannoClass,
 }: {
   children: ReactNode;
-  user: UserInfo;
+  clerkUser: { username: string; fullName: string; imageUrl: string; firstName: string };
   italiannoClass: string;
 }) {
   return (
-    <DashboardProvider user={user}>
+    <DashboardProvider clerkUser={clerkUser}>
       <FontContext.Provider value={italiannoClass}>
         <ThemeApplicator>{children}</ThemeApplicator>
       </FontContext.Provider>

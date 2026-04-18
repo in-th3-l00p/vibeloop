@@ -7,10 +7,13 @@ import { HugeiconsIcon } from "@hugeicons/react";
 import { BubbleChatIcon } from "@hugeicons/core-free-icons";
 import { Sheet, SheetTrigger, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { useDashboard } from "../dashboard-context";
+import { useLobby } from "@/hooks/use-lobby";
+import { useLobbyChat } from "@/hooks/use-lobby-chat";
 import { ScrollRow } from "../components/ui/scroll-row";
 import { StatusDot, StatusLabel } from "../components/ui/status-indicator";
 import { InviteDialog } from "../components/invite-dialog";
 import { PlayerDialog } from "../components/player-dialog";
+import { LobbySkeleton } from "../components/ui/skeleton-primitives";
 import { lobbyPlayers, lobbyMessages } from "../data/mock-players";
 import type { Player } from "../types";
 
@@ -19,6 +22,41 @@ export function Lobby() {
   const { compactMode, glowEffects } = settings;
   const cardW = compactMode ? "w-32" : "w-40";
   const [selected, setSelected] = useState<Player | null>(null);
+
+  const { myLobby, isLoading } = useLobby();
+  const lobbyId = myLobby?.lobby?._id ?? null;
+  const { messages: liveMessages, send } = useLobbyChat(lobbyId);
+  const [chatInput, setChatInput] = useState("");
+
+  // Use live data if in a lobby, otherwise show mock data as placeholder
+  const players = myLobby
+    ? myLobby.members.map((m) => ({
+        name: m.user.username,
+        tag: m.user.tag,
+        accent: m.user.accent,
+        bio: m.user.bio,
+        status: m.membership.role === "host" ? "ready" : "idle",
+        banner: m.user.banner,
+      }))
+    : lobbyPlayers;
+
+  const chatMessages = myLobby
+    ? liveMessages.map((m) => ({
+        from: m.username,
+        accent: m.accent,
+        text: m.text,
+        time: new Date(m._creationTime).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }),
+      }))
+    : lobbyMessages;
+
+  function handleSend() {
+    const text = chatInput.trim();
+    if (!text) return;
+    send(text);
+    setChatInput("");
+  }
+
+  if (isLoading) return <LobbySkeleton />;
 
   return (
     <div className="w-full max-w-xl lg:max-w-3xl">
@@ -37,20 +75,34 @@ export function Lobby() {
                 <SheetTitle>Lobby Chat</SheetTitle>
               </SheetHeader>
               <div className="flex-1 overflow-y-auto scrollbar-thin px-4 py-3 space-y-3">
-                {lobbyMessages.map((msg, i) => (
-                  <div key={i}>
-                    <div className="flex items-baseline gap-2">
-                      <span className="text-xs font-bold shrink-0" style={{ color: msg.accent, textShadow: `0 0 6px ${msg.accent}40` }}>{msg.from}</span>
-                      <span className="text-[9px] text-muted-foreground">{msg.time}</span>
+                {chatMessages.length === 0 ? (
+                  <p className="text-xs text-muted-foreground text-center py-8">No messages yet</p>
+                ) : (
+                  chatMessages.map((msg, i) => (
+                    <div key={i}>
+                      <div className="flex items-baseline gap-2">
+                        <span className="text-xs font-bold shrink-0" style={{ color: msg.accent, textShadow: `0 0 6px ${msg.accent}40` }}>{msg.from}</span>
+                        <span className="text-[9px] text-muted-foreground">{msg.time}</span>
+                      </div>
+                      <p className="text-sm text-zinc-300 mt-0.5">{msg.text}</p>
                     </div>
-                    <p className="text-sm text-zinc-300 mt-0.5">{msg.text}</p>
-                  </div>
-                ))}
+                  ))
+                )}
               </div>
               <div className="border-t border-border p-4">
                 <div className="flex items-center gap-2">
-                  <input type="text" placeholder="Type a message..." className="flex-1 rounded-lg bg-card ring-1 ring-border px-3 py-2 text-sm text-white placeholder:text-muted-foreground outline-none focus:ring-white/20" />
-                  <button className="cursor-pointer rounded-lg bg-card ring-1 ring-border px-3 py-2 text-muted-foreground transition-all duration-300 hover:text-white">
+                  <input
+                    type="text"
+                    value={chatInput}
+                    onChange={(e) => setChatInput(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === "Enter") handleSend(); }}
+                    placeholder="Type a message..."
+                    className="flex-1 rounded-lg bg-card ring-1 ring-border px-3 py-2 text-sm text-white placeholder:text-muted-foreground outline-none focus:ring-white/20"
+                  />
+                  <button
+                    onClick={handleSend}
+                    className="cursor-pointer rounded-lg bg-card ring-1 ring-border px-3 py-2 text-muted-foreground transition-all duration-300 hover:text-white"
+                  >
                     <HugeiconsIcon icon={BubbleChatIcon} size={16} />
                   </button>
                 </div>
@@ -66,7 +118,7 @@ export function Lobby() {
       </div>
 
       <ScrollRow>
-        {lobbyPlayers.map((player) => (
+        {players.map((player) => (
           <motion.button
             key={player.name}
             onClick={() => setSelected(player)}

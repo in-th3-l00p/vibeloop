@@ -2,12 +2,14 @@
 
 import Image from "next/image";
 import { useDashboard } from "../dashboard-context";
+import { useGameStats } from "@/hooks/use-game-stats";
 import { getProfileCard } from "../lib/theme-utils";
 
 export function ProfileCard() {
   const { settings, user } = useDashboard();
   const { compactMode, glowEffects } = settings;
   const pc = getProfileCard(settings);
+  const { totalPlayed, totalWins } = useGameStats();
 
   return (
     <div
@@ -38,21 +40,23 @@ export function ProfileCard() {
         <div className="min-w-0 flex-1">
           <p className="text-sm font-semibold truncate" style={{ color: pc.nameColor, textShadow: glowEffects ? `0 0 8px ${pc.nameColor}50` : undefined }}>{user.fullName}</p>
           <p className="text-xs truncate" style={{ color: pc.tagColor }}>@{user.username}</p>
-          <p className="text-[11px] mt-0.5 truncate" style={{ color: pc.descColor }}>No description yet.</p>
+          <p className="text-[11px] mt-0.5 truncate" style={{ color: pc.descColor }}>{user.bio || "No description yet."}</p>
         </div>
 
         <div className="shrink-0 text-center pl-4" style={{ borderLeft: `1px solid ${pc.divider}` }}>
-          <p className="text-lg font-bold leading-tight" style={{ color: pc.statColor, textShadow: glowEffects ? `0 0 8px ${pc.statColor}40` : undefined }}>0.00</p>
+          <p className="text-lg font-bold leading-tight" style={{ color: pc.statColor, textShadow: glowEffects ? `0 0 8px ${pc.statColor}40` : undefined }}>
+            {user.vibeBalance.toFixed(2)}
+          </p>
           <p className="text-[10px] uppercase tracking-wider" style={{ color: pc.labelColor }}>$VIBE</p>
         </div>
 
         <div className="shrink-0 flex gap-4 text-center pl-3" style={{ borderLeft: `1px solid ${pc.divider}` }}>
           <div>
-            <p className="text-sm font-bold" style={{ color: pc.statColor }}>0</p>
+            <p className="text-sm font-bold" style={{ color: pc.statColor }}>{totalPlayed}</p>
             <p className="text-[10px] uppercase tracking-wider" style={{ color: pc.labelColor }}>Games</p>
           </div>
           <div>
-            <p className="text-sm font-bold" style={{ color: pc.statColor }}>0</p>
+            <p className="text-sm font-bold" style={{ color: pc.statColor }}>{totalWins}</p>
             <p className="text-[10px] uppercase tracking-wider" style={{ color: pc.labelColor }}>Wins</p>
           </div>
           <div>
