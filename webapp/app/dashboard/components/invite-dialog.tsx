@@ -3,10 +3,12 @@
 import { useState } from "react";
 import Image from "next/image";
 import { HugeiconsIcon } from "@hugeicons/react";
-import { Search01Icon, Tick02Icon, SentIcon } from "@hugeicons/core-free-icons";
+import { Search01Icon, Tick02Icon, SentIcon, Cancel01Icon } from "@hugeicons/core-free-icons";
 import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { StatusDot } from "./ui/status-indicator";
 import { useFriends } from "@/hooks/use-friends";
+import { useLobby } from "@/hooks/use-lobby";
+import { useLobbyInvitations } from "@/hooks/use-lobby-invitations";
 import { FriendsSkeleton } from "./ui/skeleton-primitives";
 import { getProfileCardById } from "../lib/theme-utils";
 
@@ -14,6 +16,10 @@ const statusOrder = { online: 0, "in-game": 1, offline: 2 } as const;
 
 export function InviteDialog({ children }: { children: React.ReactNode }) {
   const { friends, isLoading } = useFriends();
+  const { lobbyId } = useLobby();
+  const { invitations, accept, decline } = useLobbyInvitations();
+  const sendInvite = useLobbyInvitations().send;
+
   const [search, setSearch] = useState("");
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [sent, setSent] = useState(false);
@@ -39,7 +45,15 @@ export function InviteDialog({ children }: { children: React.ReactNode }) {
     });
   }
 
-  function send() {
+  async function handleSend() {
+    if (!lobbyId || selected.size === 0) return;
+    for (const userId of selected) {
+      try {
+        await sendInvite(lobbyId, userId as any);
+      } catch {
+        // skip already-invited or already-in-lobby
+      }
+    }
     setSent(true);
     setTimeout(() => {
       setSent(false);
@@ -50,13 +64,69 @@ export function InviteDialog({ children }: { children: React.ReactNode }) {
   return (
     <Dialog onOpenChange={(open) => { if (!open) { setSearch(""); setSelected(new Set()); setSent(false); } }}>
       <DialogTrigger asChild>
-        {children}
+        <div className="relative">
+          {children}
+          {invitations.length > 0 && (
+            <span className="absolute -top-1.5 -right-1.5 size-4 rounded-full bg-primary text-primary-foreground text-[9px] font-bold flex items-center justify-center">
+              {invitations.length}
+            </span>
+          )}
+        </div>
       </DialogTrigger>
       <DialogContent className="sm:max-w-sm !p-0 gap-0 max-h-[75vh] overflow-hidden flex flex-col">
         <DialogHeader className="px-5 pt-5 pb-3 shrink-0">
           <DialogTitle>Invite Friends</DialogTitle>
           <DialogDescription>Select friends to invite to your lobby</DialogDescription>
         </DialogHeader>
+
+        {/* Lobby Invitations Received */}
+        {invitations.length > 0 && (
+          <div className="px-4 pb-2 shrink-0">
+            <p className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground mb-1.5">
+              Lobby Invitations ({invitations.length})
+            </p>
+            <div className="space-y-1">
+              {invitations.map((inv) => {
+                const pc = getProfileCardById(inv.sender.cardTheme);
+                return (
+                  <div
+                    key={inv.invitation._id}
+                    className="flex items-center gap-3 rounded-lg px-3 py-2"
+                    style={{ backgroundColor: pc.nameBg, border: `1px solid ${pc.borderColor}` }}
+                  >
+                    <div className="relative size-8 rounded-full overflow-hidden shrink-0" style={{ boxShadow: `0 0 0 2px ${pc.avatarRing}` }}>
+                      {inv.sender.imageUrl ? (
+                        <Image src={inv.sender.imageUrl} alt={inv.sender.username} fill className="object-cover rounded-full" />
+                      ) : (
+                        <Image src="/background.png" alt={inv.sender.username} fill className="object-cover rounded-full" />
+                      )}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-xs font-semibold truncate" style={{ color: pc.nameColor }}>{inv.sender.username}</p>
+                      <p className="text-[9px] truncate" style={{ color: pc.tagColor }}>{inv.lobby.name}</p>
+                    </div>
+                    <button
+                      onClick={() => accept(inv.invitation._id)}
+                      className="cursor-pointer size-6 rounded-md flex items-center justify-center transition-opacity hover:opacity-80"
+                      style={{ backgroundColor: pc.avatarRing, color: pc.nameBg }}
+                      title="Join lobby"
+                    >
+                      <HugeiconsIcon icon={Tick02Icon} size={12} strokeWidth={3} />
+                    </button>
+                    <button
+                      onClick={() => decline(inv.invitation._id)}
+                      className="cursor-pointer size-6 rounded-md flex items-center justify-center transition-opacity hover:opacity-80"
+                      style={{ backgroundColor: `${pc.borderColor}`, color: "#f43f5e", border: `1px solid ${pc.divider}` }}
+                      title="Decline"
+                    >
+                      <HugeiconsIcon icon={Cancel01Icon} size={12} strokeWidth={2} />
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
 
         <div className="px-4 pb-2 shrink-0">
           <div className="flex items-center gap-2 rounded-lg bg-secondary ring-1 ring-border px-3 py-2 focus-within:ring-ring">
@@ -148,7 +218,7 @@ export function InviteDialog({ children }: { children: React.ReactNode }) {
             </div>
           ) : (
             <button
-              onClick={send}
+              onClick={handleSend}
               disabled={selected.size === 0}
               className="cursor-pointer w-full rounded-lg bg-primary text-primary-foreground px-3 py-2 text-xs font-medium transition-all duration-200 hover:opacity-90 disabled:opacity-30 disabled:cursor-not-allowed"
             >

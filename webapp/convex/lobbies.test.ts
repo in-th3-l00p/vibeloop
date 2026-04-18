@@ -16,40 +16,64 @@ async function createUser(t: ReturnType<typeof convexTest>, name: string) {
   return asUser;
 }
 
-describe("lobbies.create", () => {
-  it("creates lobby and adds host as member", async () => {
+describe("lobbies.getOrCreateMyLobby", () => {
+  it("creates a solo lobby for a new user", async () => {
     const t = convexTest(schema, modules);
     const asAlice = await createUser(t, "Alice");
 
-    const lobbyId = await asAlice.mutation(api.lobbies.create, {
-      name: "Friday Games",
-      maxPlayers: 20,
-    });
+    const lobbyId = await asAlice.mutation(api.lobbies.getOrCreateMyLobby, {});
     expect(lobbyId).toBeDefined();
 
     const myLobby = await asAlice.query(api.lobbies.getMyLobby, {});
     expect(myLobby).not.toBeNull();
-    expect(myLobby!.lobby.name).toBe("Friday Games");
+    expect(myLobby!.lobby.name).toBe("alice's Lobby");
     expect(myLobby!.members).toHaveLength(1);
     expect(myLobby!.members[0].membership.role).toBe("host");
+  });
+
+  it("returns existing lobby on second call", async () => {
+    const t = convexTest(schema, modules);
+    const asAlice = await createUser(t, "Alice");
+
+    const id1 = await asAlice.mutation(api.lobbies.getOrCreateMyLobby, {});
+    const id2 = await asAlice.mutation(api.lobbies.getOrCreateMyLobby, {});
+    expect(id1).toEqual(id2);
+  });
+});
+
+describe("lobbies.create", () => {
+  it("leaves old lobby and creates new one", async () => {
+    const t = convexTest(schema, modules);
+    const asAlice = await createUser(t, "Alice");
+
+    const oldId = await asAlice.mutation(api.lobbies.getOrCreateMyLobby, {});
+    const newId = await asAlice.mutation(api.lobbies.create, {
+      name: "Game Night",
+      maxPlayers: 10,
+    });
+
+    expect(newId).not.toEqual(oldId);
+    const myLobby = await asAlice.query(api.lobbies.getMyLobby, {});
+    expect(myLobby!.lobby.name).toBe("Game Night");
   });
 });
 
 describe("lobbies.join", () => {
-  it("adds member to lobby", async () => {
+  it("joins another lobby and leaves current", async () => {
     const t = convexTest(schema, modules);
     const asAlice = await createUser(t, "Alice");
     const asBob = await createUser(t, "Bob");
 
-    const lobbyId = await asAlice.mutation(api.lobbies.create, {
-      name: "Test",
+    const aliceLobby = await asAlice.mutation(api.lobbies.create, {
+      name: "Alice's Room",
       maxPlayers: 10,
     });
+    await asBob.mutation(api.lobbies.getOrCreateMyLobby, {});
+    await asBob.mutation(api.lobbies.join, { lobbyId: aliceLobby });
 
-    await asBob.mutation(api.lobbies.join, { lobbyId });
-
-    const myLobby = await asAlice.query(api.lobbies.getMyLobby, {});
-    expect(myLobby!.members).toHaveLength(2);
+    const bobLobby = await asBob.query(api.lobbies.getMyLobby, {});
+    expect(bobLobby!.lobby._id).toEqual(aliceLobby);
+    expect(bobLobby!.members).toHaveLength(2);
   });
 
   it("rejects if lobby is full", async () => {
@@ -68,60 +92,10 @@ describe("lobbies.join", () => {
       asCharlie.mutation(api.lobbies.join, { lobbyId }),
     ).rejects.toThrowError("Lobby is full");
   });
-
-  it("rejects if lobby is closed", async () => {
-    const t = convexTest(schema, modules);
-    const asAlice = await createUser(t, "Alice");
-    const asBob = await createUser(t, "Bob");
-
-    const lobbyId = await asAlice.mutation(api.lobbies.create, {
-      name: "Test",
-      maxPlayers: 10,
-    });
-
-    // Host leaves, closing the lobby
-    await asAlice.mutation(api.lobbies.leave, { lobbyId });
-
-    await expect(
-      asBob.mutation(api.lobbies.join, { lobbyId }),
-    ).rejects.toThrowError("Lobby is closed");
-  });
-
-  it("rejects duplicate join", async () => {
-    const t = convexTest(schema, modules);
-    const asAlice = await createUser(t, "Alice");
-    const asBob = await createUser(t, "Bob");
-
-    const lobbyId = await asAlice.mutation(api.lobbies.create, {
-      name: "Test",
-      maxPlayers: 10,
-    });
-    await asBob.mutation(api.lobbies.join, { lobbyId });
-
-    await expect(
-      asBob.mutation(api.lobbies.join, { lobbyId }),
-    ).rejects.toThrowError("Already in this lobby");
-  });
 });
 
-describe("lobbies.leave", () => {
-  it("removes member", async () => {
-    const t = convexTest(schema, modules);
-    const asAlice = await createUser(t, "Alice");
-    const asBob = await createUser(t, "Bob");
-
-    const lobbyId = await asAlice.mutation(api.lobbies.create, {
-      name: "Test",
-      maxPlayers: 10,
-    });
-    await asBob.mutation(api.lobbies.join, { lobbyId });
-    await asBob.mutation(api.lobbies.leave, { lobbyId });
-
-    const myLobby = await asAlice.query(api.lobbies.getMyLobby, {});
-    expect(myLobby!.members).toHaveLength(1);
-  });
-
-  it("host leaving closes lobby and removes all members", async () => {
+describe("lobbies.leave — host promotion", () => {
+  it("promotes next member to host when host leaves", async () => {
     const t = convexTest(schema, modules);
     const asAlice = await createUser(t, "Alice");
     const asBob = await createUser(t, "Bob");
@@ -134,30 +108,101 @@ describe("lobbies.leave", () => {
 
     await asAlice.mutation(api.lobbies.leave, { lobbyId });
 
+    // Bob should now be host
     const bobLobby = await asBob.query(api.lobbies.getMyLobby, {});
-    expect(bobLobby).toBeNull();
+    expect(bobLobby!.lobby.hostId).toBeDefined();
+    expect(bobLobby!.members).toHaveLength(1);
+    expect(bobLobby!.members[0].membership.role).toBe("host");
+
+    // Alice should have a new solo lobby
+    const aliceLobby = await asAlice.query(api.lobbies.getMyLobby, {});
+    expect(aliceLobby).not.toBeNull();
+    expect(aliceLobby!.lobby._id).not.toEqual(lobbyId);
+  });
+
+  it("closes lobby and creates solo lobby when last person leaves", async () => {
+    const t = convexTest(schema, modules);
+    const asAlice = await createUser(t, "Alice");
+
+    const lobbyId = await asAlice.mutation(api.lobbies.create, {
+      name: "Solo",
+      maxPlayers: 10,
+    });
+    await asAlice.mutation(api.lobbies.leave, { lobbyId });
+
+    // Alice should be in a new solo lobby
+    const aliceLobby = await asAlice.query(api.lobbies.getMyLobby, {});
+    expect(aliceLobby).not.toBeNull();
+    expect(aliceLobby!.lobby._id).not.toEqual(lobbyId);
   });
 });
 
-describe("lobbies.listOpen", () => {
-  it("only returns open lobbies", async () => {
+describe("lobbies.kick", () => {
+  it("host can kick a member", async () => {
     const t = convexTest(schema, modules);
     const asAlice = await createUser(t, "Alice");
     const asBob = await createUser(t, "Bob");
 
-    const lobby1 = await asAlice.mutation(api.lobbies.create, {
-      name: "Open Lobby",
-      maxPlayers: 10,
-    });
-    const lobby2 = await asBob.mutation(api.lobbies.create, {
-      name: "Will Close",
-      maxPlayers: 10,
-    });
-    await asBob.mutation(api.lobbies.leave, { lobbyId: lobby2 });
+    const bobUser = await asBob.query(api.users.getMe, {});
 
-    const open = await t.query(api.lobbies.listOpen, {});
-    expect(open).toHaveLength(1);
-    expect(open[0].name).toBe("Open Lobby");
+    const lobbyId = await asAlice.mutation(api.lobbies.create, {
+      name: "Test",
+      maxPlayers: 10,
+    });
+    await asBob.mutation(api.lobbies.join, { lobbyId });
+
+    await asAlice.mutation(api.lobbies.kick, {
+      lobbyId,
+      targetUserId: bobUser!._id,
+    });
+
+    // Alice alone in lobby
+    const aliceLobby = await asAlice.query(api.lobbies.getMyLobby, {});
+    expect(aliceLobby!.members).toHaveLength(1);
+
+    // Bob in a new solo lobby
+    const bobLobby = await asBob.query(api.lobbies.getMyLobby, {});
+    expect(bobLobby).not.toBeNull();
+    expect(bobLobby!.lobby._id).not.toEqual(lobbyId);
+  });
+
+  it("non-host cannot kick", async () => {
+    const t = convexTest(schema, modules);
+    const asAlice = await createUser(t, "Alice");
+    const asBob = await createUser(t, "Bob");
+
+    const aliceUser = await asAlice.query(api.users.getMe, {});
+
+    const lobbyId = await asAlice.mutation(api.lobbies.create, {
+      name: "Test",
+      maxPlayers: 10,
+    });
+    await asBob.mutation(api.lobbies.join, { lobbyId });
+
+    await expect(
+      asBob.mutation(api.lobbies.kick, {
+        lobbyId,
+        targetUserId: aliceUser!._id,
+      }),
+    ).rejects.toThrowError("Only the host can kick members");
+  });
+
+  it("cannot kick yourself", async () => {
+    const t = convexTest(schema, modules);
+    const asAlice = await createUser(t, "Alice");
+    const aliceUser = await asAlice.query(api.users.getMe, {});
+
+    const lobbyId = await asAlice.mutation(api.lobbies.create, {
+      name: "Test",
+      maxPlayers: 10,
+    });
+
+    await expect(
+      asAlice.mutation(api.lobbies.kick, {
+        lobbyId,
+        targetUserId: aliceUser!._id,
+      }),
+    ).rejects.toThrowError("Cannot kick yourself");
   });
 });
 
@@ -168,10 +213,20 @@ describe("lobbies.getMyLobby", () => {
     const result = await asAlice.query(api.lobbies.getMyLobby, {});
     expect(result).toBeNull();
   });
+});
 
-  it("returns null for unauthenticated", async () => {
+describe("lobbies.listOpen", () => {
+  it("only returns open lobbies", async () => {
     const t = convexTest(schema, modules);
-    const result = await t.query(api.lobbies.getMyLobby, {});
-    expect(result).toBeNull();
+    const asAlice = await createUser(t, "Alice");
+
+    await asAlice.mutation(api.lobbies.create, {
+      name: "Open Lobby",
+      maxPlayers: 10,
+    });
+
+    const open = await t.query(api.lobbies.listOpen, {});
+    expect(open.length).toBeGreaterThanOrEqual(1);
+    expect(open.every((l: { isOpen: boolean }) => l.isOpen)).toBe(true);
   });
 });

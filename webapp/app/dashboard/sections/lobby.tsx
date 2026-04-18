@@ -4,8 +4,9 @@ import { useState } from "react";
 import Image from "next/image";
 import { motion } from "motion/react";
 import { HugeiconsIcon } from "@hugeicons/react";
-import { BubbleChatIcon } from "@hugeicons/core-free-icons";
+import { BubbleChatIcon, Add01Icon, Crown02Icon } from "@hugeicons/core-free-icons";
 import { Sheet, SheetTrigger, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { useDashboard } from "../dashboard-context";
 import { useLobby } from "@/hooks/use-lobby";
 import { useLobbyChat } from "@/hooks/use-lobby-chat";
@@ -28,9 +29,9 @@ export function Lobby() {
   const { compactMode, glowEffects } = settings;
   const cardW = compactMode ? "w-32" : "w-40";
   const [selected, setSelected] = useState<SelectedPlayer | null>(null);
+  const [confirmNewOpen, setConfirmNewOpen] = useState(false);
 
-  const { myLobby, isLoading } = useLobby();
-  const lobbyId = myLobby?.lobby?._id ?? null;
+  const { myLobby, lobbyId, isLoading, isSolo, createNew } = useLobby();
   const { messages: liveMessages, send } = useLobbyChat(lobbyId);
   const [chatInput, setChatInput] = useState("");
 
@@ -44,6 +45,7 @@ export function Lobby() {
         banner: m.user.banner,
         userId: m.user._id as Id<"users">,
         cardTheme: m.user.cardTheme as string,
+        isHost: m.membership.role === "host",
       }))
     : [];
 
@@ -61,12 +63,22 @@ export function Lobby() {
     setChatInput("");
   }
 
+  function handleNewLobby() {
+    setConfirmNewOpen(false);
+    createNew();
+  }
+
   if (isLoading) return <LobbySkeleton />;
 
   return (
     <div className="w-full max-w-xl lg:max-w-3xl">
       <div className="flex items-center justify-between mb-3">
-        <p className="text-[11px] uppercase tracking-[0.3em] text-muted-foreground">Lobby</p>
+        <div className="flex items-center gap-2">
+          <p className="text-[11px] uppercase tracking-[0.3em] text-muted-foreground">Lobby</p>
+          {myLobby && (
+            <span className="text-[10px] text-muted-foreground">— {myLobby.lobby.name}</span>
+          )}
+        </div>
         <div className="flex items-center gap-2">
           <Sheet>
             <SheetTrigger asChild>
@@ -114,11 +126,46 @@ export function Lobby() {
               </div>
             </SheetContent>
           </Sheet>
+
           <InviteDialog>
             <button className="cursor-pointer text-[10px] uppercase tracking-wider text-muted-foreground rounded-md px-2.5 py-1 bg-card ring-1 ring-border transition-all duration-300 hover:text-white">
               + Invite
             </button>
           </InviteDialog>
+
+          <Dialog open={confirmNewOpen} onOpenChange={setConfirmNewOpen}>
+            <DialogTrigger asChild>
+              <button
+                disabled={isSolo}
+                className="cursor-pointer text-[10px] uppercase tracking-wider text-muted-foreground rounded-md px-2.5 py-1 bg-card ring-1 ring-border transition-all duration-300 hover:text-white flex items-center gap-1.5 disabled:opacity-30 disabled:cursor-not-allowed"
+              >
+                <HugeiconsIcon icon={Add01Icon} size={12} />
+                New
+              </button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-xs">
+              <DialogHeader>
+                <DialogTitle>Create New Lobby?</DialogTitle>
+                <DialogDescription>
+                  You&apos;ll leave your current lobby. Other members will remain.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="flex gap-2 pt-2">
+                <button
+                  onClick={() => setConfirmNewOpen(false)}
+                  className="cursor-pointer flex-1 rounded-lg bg-secondary text-secondary-foreground ring-1 ring-border py-2 text-xs font-medium transition-all hover:bg-secondary/80"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleNewLobby}
+                  className="cursor-pointer flex-1 rounded-lg bg-primary text-primary-foreground py-2 text-xs font-medium transition-all hover:opacity-90"
+                >
+                  Create New
+                </button>
+              </div>
+            </DialogContent>
+          </Dialog>
         </div>
       </div>
 
@@ -127,7 +174,7 @@ export function Lobby() {
           const pc = getProfileCardById(player.cardTheme);
           return (
             <motion.button
-              key={player.name}
+              key={player.userId}
               onClick={() => setSelected({ player, userId: player.userId })}
               whileHover={{ y: -3 }}
               whileTap={{ scale: 0.97 }}
@@ -135,6 +182,11 @@ export function Lobby() {
               className={`cursor-pointer group relative shrink-0 ${cardW} rounded-xl overflow-hidden transition-[box-shadow,ring-color] duration-300 text-left`}
               style={{ backgroundColor: pc.nameBg, border: `1px solid ${pc.borderColor}` }}
             >
+              {player.isHost && (
+                <div className="absolute top-1.5 right-1.5 z-10">
+                  <HugeiconsIcon icon={Crown02Icon} size={14} style={{ color: "#fbbf24", filter: "drop-shadow(0 0 4px #fbbf2460)" }} />
+                </div>
+              )}
               <div className={`${compactMode ? "h-12" : "h-16"} w-full`} style={{ background: player.banner ?? `linear-gradient(135deg, ${pc.avatarRing}, ${pc.avatarRing}80)` }} />
               <div className="relative px-3 pb-3">
                 <div

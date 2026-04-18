@@ -162,6 +162,20 @@ export default defineSchema({
     .index("by_rarity", ["rarity"])
     .searchIndex("search_name", { searchField: "name" }),
 
+  lobbyInvitations: defineTable({
+    lobbyId: v.id("lobbies"),
+    fromUserId: v.id("users"),
+    toUserId: v.id("users"),
+    status: v.union(
+      v.literal("pending"),
+      v.literal("accepted"),
+      v.literal("declined"),
+    ),
+  })
+    .index("by_toUserId", ["toUserId"])
+    .index("by_fromUserId", ["fromUserId"])
+    .index("by_lobbyId_and_toUserId", ["lobbyId", "toUserId"]),
+
   chainSyncState: defineTable({
     contractAddress: v.string(),
     lastBlockSynced: v.number(),

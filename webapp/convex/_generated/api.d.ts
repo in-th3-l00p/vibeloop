@@ -17,6 +17,7 @@ import type * as games from "../games.js";
 import type * as http from "../http.js";
 import type * as lib_getUserCardTheme from "../lib/getUserCardTheme.js";
 import type * as lobbies from "../lobbies.js";
+import type * as lobbyInvitations from "../lobbyInvitations.js";
 import type * as marketplace from "../marketplace.js";
 import type * as nft from "../nft.js";
 import type * as presence from "../presence.js";
@@ -41,6 +42,7 @@ declare const fullApi: ApiFromModules<{
   http: typeof http;
   "lib/getUserCardTheme": typeof lib_getUserCardTheme;
   lobbies: typeof lobbies;
+  lobbyInvitations: typeof lobbyInvitations;
   marketplace: typeof marketplace;
   nft: typeof nft;
   presence: typeof presence;

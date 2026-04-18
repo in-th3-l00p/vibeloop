@@ -1,6 +1,7 @@
 import { v } from "convex/values";
-import { mutation, query, QueryCtx } from "./_generated/server";
+import { mutation, query, QueryCtx, MutationCtx } from "./_generated/server";
 import { getUserCardTheme } from "./lib/getUserCardTheme";
+import { Id } from "./_generated/dataModel";
 
 async function getCurrentUser(ctx: QueryCtx) {
   const identity = await ctx.auth.getUserIdentity();
@@ -19,6 +20,77 @@ async function getCurrentUser(ctx: QueryCtx) {
   return user;
 }
 
+/** Shared helper: create a solo lobby for a user */
+async function createSoloLobby(ctx: MutationCtx, userId: Id<"users">, username: string) {
+  const lobbyId = await ctx.db.insert("lobbies", {
+    name: `${username}'s Lobby`,
+    hostId: userId,
+    maxPlayers: 20,
+    isOpen: true,
+  });
+  await ctx.db.insert("lobbyMembers", {
+    lobbyId,
+    userId,
+    role: "host",
+  });
+  return lobbyId;
+}
+
+/** Shared helper: remove user from their current lobby, handle host transfer */
+async function leaveCurrentLobby(ctx: MutationCtx, userId: Id<"users">) {
+  const memberships = await ctx.db
+    .query("lobbyMembers")
+    .withIndex("by_userId", (q) => q.eq("userId", userId))
+    .take(1);
+
+  if (memberships.length === 0) return null;
+
+  const membership = memberships[0];
+  const lobbyId = membership.lobbyId;
+
+  await ctx.db.delete(membership._id);
+
+  if (membership.role === "host") {
+    // Find remaining members sorted by creation time (earliest joined)
+    const remaining = await ctx.db
+      .query("lobbyMembers")
+      .withIndex("by_lobbyId", (q) => q.eq("lobbyId", lobbyId))
+      .take(200);
+
+    if (remaining.length > 0) {
+      // Promote earliest member to host
+      const newHost = remaining[0];
+      await ctx.db.patch(newHost._id, { role: "host" });
+      await ctx.db.patch(lobbyId, { hostId: newHost.userId });
+    } else {
+      // No one left — close lobby
+      await ctx.db.patch(lobbyId, { isOpen: false });
+    }
+  }
+
+  return lobbyId;
+}
+
+export const getOrCreateMyLobby = mutation({
+  args: {},
+  handler: async (ctx) => {
+    const user = await getCurrentUser(ctx);
+
+    // Check if already in a lobby
+    const existing = await ctx.db
+      .query("lobbyMembers")
+      .withIndex("by_userId", (q) => q.eq("userId", user._id))
+      .take(1);
+
+    if (existing.length > 0) {
+      return existing[0].lobbyId;
+    }
+
+    // Create solo lobby
+    return await createSoloLobby(ctx, user._id, user.username);
+  },
+});
+
 export const create = mutation({
   args: {
     name: v.string(),
@@ -26,6 +98,9 @@ export const create = mutation({
   },
   handler: async (ctx, args) => {
     const user = await getCurrentUser(ctx);
+
+    // Leave current lobby first
+    await leaveCurrentLobby(ctx, user._id);
 
     const lobbyId = await ctx.db.insert("lobbies", {
       name: args.name,
@@ -59,12 +134,12 @@ export const join = mutation({
       throw new Error("Lobby is closed");
     }
 
-    // Check if already a member
-    const existing = await ctx.db
+    // Check if already in THIS lobby
+    const myMemberships = await ctx.db
       .query("lobbyMembers")
       .withIndex("by_userId", (q) => q.eq("userId", user._id))
       .take(10);
-    const alreadyIn = existing.find((m) => m.lobbyId === args.lobbyId);
+    const alreadyIn = myMemberships.find((m) => m.lobbyId === args.lobbyId);
     if (alreadyIn) {
       throw new Error("Already in this lobby");
     }
@@ -77,6 +152,9 @@ export const join = mutation({
     if (members.length >= lobby.maxPlayers) {
       throw new Error("Lobby is full");
     }
+
+    // Leave current lobby first
+    await leaveCurrentLobby(ctx, user._id);
 
     return await ctx.db.insert("lobbyMembers", {
       lobbyId: args.lobbyId,
@@ -105,19 +183,60 @@ export const leave = mutation({
 
     await ctx.db.delete(myMembership._id);
 
-    // If host leaves, close the lobby
     if (myMembership.role === "host") {
-      await ctx.db.patch(args.lobbyId, { isOpen: false });
-
-      // Remove all remaining members
       const remaining = await ctx.db
         .query("lobbyMembers")
         .withIndex("by_lobbyId", (q) => q.eq("lobbyId", args.lobbyId))
         .take(200);
-      for (const member of remaining) {
-        await ctx.db.delete(member._id);
+
+      if (remaining.length > 0) {
+        const newHost = remaining[0];
+        await ctx.db.patch(newHost._id, { role: "host" });
+        await ctx.db.patch(args.lobbyId, { hostId: newHost.userId });
+      } else {
+        await ctx.db.patch(args.lobbyId, { isOpen: false });
       }
     }
+
+    // Auto-create a new solo lobby for the user who left
+    await createSoloLobby(ctx, user._id, user.username);
+  },
+});
+
+export const kick = mutation({
+  args: {
+    lobbyId: v.id("lobbies"),
+    targetUserId: v.id("users"),
+  },
+  handler: async (ctx, args) => {
+    const user = await getCurrentUser(ctx);
+    const lobby = await ctx.db.get(args.lobbyId);
+
+    if (!lobby) {
+      throw new Error("Lobby not found");
+    }
+    if (lobby.hostId !== user._id) {
+      throw new Error("Only the host can kick members");
+    }
+    if (args.targetUserId === user._id) {
+      throw new Error("Cannot kick yourself");
+    }
+
+    const members = await ctx.db
+      .query("lobbyMembers")
+      .withIndex("by_lobbyId", (q) => q.eq("lobbyId", args.lobbyId))
+      .take(200);
+    const targetMembership = members.find((m) => m.userId === args.targetUserId);
+
+    if (!targetMembership) {
+      throw new Error("User is not in this lobby");
+    }
+
+    await ctx.db.delete(targetMembership._id);
+
+    // Create solo lobby for kicked user
+    const targetUser = await ctx.db.get(args.targetUserId);
+    await createSoloLobby(ctx, args.targetUserId, targetUser?.username ?? "player");
   },
 });
 
@@ -138,7 +257,6 @@ export const getMyLobby = query({
       return null;
     }
 
-    // Find which lobby the user is in
     const myMemberships = await ctx.db
       .query("lobbyMembers")
       .withIndex("by_userId", (q) => q.eq("userId", user._id))
@@ -154,7 +272,6 @@ export const getMyLobby = query({
       return null;
     }
 
-    // Get all members with user info
     const memberDocs = await ctx.db
       .query("lobbyMembers")
       .withIndex("by_lobbyId", (q) => q.eq("lobbyId", lobby._id))
@@ -168,20 +285,17 @@ export const getMyLobby = query({
       }
     }
 
-    // Get sessions
     const sessions = await ctx.db
       .query("gameSessions")
       .withIndex("by_lobbyId", (q) => q.eq("lobbyId", lobby._id))
       .take(50);
 
-    // Get recent chat
     const messages = await ctx.db
       .query("chatMessages")
       .withIndex("by_lobbyId", (q) => q.eq("lobbyId", lobby._id))
       .order("desc")
       .take(50);
 
-    // Enrich messages with user info
     const enrichedMessages = [];
     for (const msg of messages.reverse()) {
       const msgUser = await ctx.db.get(msg.userId);
