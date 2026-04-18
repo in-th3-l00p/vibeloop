@@ -13,6 +13,7 @@ import { useUserSearch } from "@/hooks/use-user-search";
 import { useGames } from "@/hooks/use-games";
 import { useMarketplace } from "@/hooks/use-marketplace";
 import { rarityColors } from "../lib/constants";
+import { getProfileCardById } from "../lib/theme-utils";
 import type { Game, MarketplaceItem, Player } from "../types";
 import type { Id } from "@/convex/_generated/dataModel";
 
@@ -101,40 +102,45 @@ export function Search() {
                     <span className="text-xs text-muted-foreground">No players found</span>
                   </div>
                 ) : (
-                  userResults.map((user) => (
-                    <CommandItem
-                      key={user._id}
-                      value={`player-${user._id}`}
-                      onSelect={() => {
-                        setOpen(false);
-                        setSelectedPlayer({
-                          player: {
-                            name: user.username,
-                            tag: user.tag,
-                            accent: user.accent,
-                            bio: user.bio,
-                            status: "offline",
-                            banner: user.banner,
-                          },
-                          userId: user._id,
-                        });
-                      }}
-                    >
-                      <div className="relative shrink-0">
-                        <div className="size-5 rounded-full overflow-hidden">
-                          {user.imageUrl ? (
-                            <Image src={user.imageUrl} alt={user.username} width={20} height={20} className="object-cover" />
-                          ) : (
-                            <div className="size-5 rounded-full bg-zinc-700 flex items-center justify-center text-[8px] font-bold">
-                              {user.fullName.charAt(0)}
+                  <>
+                    {userResults.map((user) => {
+                      const pc = getProfileCardById(user.cardTheme);
+                      return (
+                        <CommandItem
+                          key={user._id}
+                          value={`player-${user._id}`}
+                          onSelect={() => {
+                            setOpen(false);
+                            setSelectedPlayer({
+                              player: {
+                                name: user.username,
+                                tag: user.tag,
+                                accent: user.accent,
+                                bio: user.bio,
+                                status: "offline",
+                                banner: user.banner,
+                              },
+                              userId: user._id,
+                            });
+                          }}
+                        >
+                          <div className="relative shrink-0">
+                            <div className="size-5 rounded-full overflow-hidden" style={{ boxShadow: `0 0 0 1.5px ${pc.avatarRing}` }}>
+                              {user.imageUrl ? (
+                                <Image src={user.imageUrl} alt={user.username} width={20} height={20} className="object-cover rounded-full" />
+                              ) : (
+                                <div className="size-5 rounded-full flex items-center justify-center text-[8px] font-bold" style={{ backgroundColor: pc.nameBg, color: pc.nameColor }}>
+                                  {user.fullName.charAt(0)}
+                                </div>
+                              )}
                             </div>
-                          )}
-                        </div>
-                      </div>
-                      <span className="flex-1" style={{ color: user.accent }}>{user.username}</span>
-                      <span className="text-[9px] text-muted-foreground">@{user.tag}</span>
-                    </CommandItem>
-                  ))
+                          </div>
+                          <span className="flex-1" style={{ color: pc.nameColor }}>{user.username}</span>
+                          <span className="text-[9px]" style={{ color: pc.tagColor }}>@{user.tag}</span>
+                        </CommandItem>
+                      );
+                    })}
+                  </>
                 )}
               </CommandGroup>
             )}

@@ -1,6 +1,7 @@
 import { v } from "convex/values";
 import { mutation, query, QueryCtx } from "./_generated/server";
 import { Id } from "./_generated/dataModel";
+import { getUserCardTheme } from "./lib/getUserCardTheme";
 
 async function getCurrentUser(ctx: QueryCtx) {
   const identity = await ctx.auth.getUserIdentity();
@@ -241,9 +242,10 @@ export const listPendingRequests = query({
         : f.requestedBy;
       const otherUser = await ctx.db.get(otherUserId);
       if (!otherUser) continue;
+      const cardTheme = await getUserCardTheme(ctx, otherUserId);
       results.push({
         friendship: f,
-        user: otherUser,
+        user: { ...otherUser, cardTheme },
         direction: iSent ? ("outgoing" as const) : ("incoming" as const),
       });
     }
@@ -293,9 +295,11 @@ export const listFriends = query({
         .withIndex("by_userId", (q) => q.eq("userId", friendId))
         .unique();
 
+      const cardTheme = await getUserCardTheme(ctx, friendId);
+
       results.push({
         friendship: f,
-        user: friend,
+        user: { ...friend, cardTheme },
         presence: presence ?? { status: "offline" as const, lastSeen: 0 },
       });
     }

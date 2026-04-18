@@ -17,17 +17,11 @@ import { StatusDot, StatusLabel } from "./ui/status-indicator";
 import { useRelationship } from "@/hooks/use-relationship";
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
-import { profileCardThemes } from "../data/theme-presets";
+import { getProfileCardById } from "../lib/theme-utils";
 import type { Id } from "@/convex/_generated/dataModel";
-import type { Player, ProfileCardTheme } from "../types";
+import type { Player } from "../types";
 
 const ease = [0.25, 1, 0.5, 1] as const;
-const defaultTheme = profileCardThemes[0];
-
-function resolveCardTheme(themeId: string | undefined): ProfileCardTheme {
-  if (!themeId) return defaultTheme;
-  return profileCardThemes.find((t) => t.id === themeId) ?? defaultTheme;
-}
 
 export interface PlayerDialogProps {
   player: Player;
@@ -53,7 +47,7 @@ export function PlayerDialog({ player, userId, open, onOpenChange }: PlayerDialo
     userId ? { userId } : "skip",
   );
 
-  const pc = resolveCardTheme(targetSettings?.profileCardTheme);
+  const pc = getProfileCardById(targetSettings?.profileCardTheme);
 
   const isSelf = relationship?.kind === "self";
   const isFriend = relationship?.kind === "friends";

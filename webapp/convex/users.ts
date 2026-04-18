@@ -1,6 +1,7 @@
 import { v } from "convex/values";
 import { mutation, query, MutationCtx } from "./_generated/server";
 import { api } from "./_generated/api";
+import { getUserCardTheme } from "./lib/getUserCardTheme";
 
 const DEFAULT_SETTINGS = {
   profileCardTheme: "default",
@@ -151,15 +152,21 @@ export const search = query({
 
     // Deduplicate by _id
     const seen = new Set<string>();
-    const results = [];
+    const deduped = [];
     for (const user of [...byUsername, ...byTag]) {
       if (!seen.has(user._id)) {
         seen.add(user._id);
-        results.push(user);
+        deduped.push(user);
       }
     }
 
-    return results.slice(0, 10);
+    const results = [];
+    for (const user of deduped.slice(0, 10)) {
+      const cardTheme = await getUserCardTheme(ctx, user._id);
+      results.push({ ...user, cardTheme });
+    }
+
+    return results;
   },
 });
 

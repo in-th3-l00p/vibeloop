@@ -5,6 +5,11 @@ export function getProfileCard(settings: DashboardSettings): ProfileCardTheme {
   return profileCardThemes.find((t) => t.id === settings.profileCardTheme) ?? profileCardThemes[0];
 }
 
+export function getProfileCardById(themeId: string | undefined): ProfileCardTheme {
+  if (!themeId) return profileCardThemes[0];
+  return profileCardThemes.find((t) => t.id === themeId) ?? profileCardThemes[0];
+}
+
 export function getActiveTheme(settings: DashboardSettings): CssVarTheme {
   return uiThemes[settings.uiTheme] ?? uiThemes[0];
 }

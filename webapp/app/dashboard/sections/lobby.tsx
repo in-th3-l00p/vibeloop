@@ -14,6 +14,7 @@ import { StatusDot, StatusLabel } from "../components/ui/status-indicator";
 import { InviteDialog } from "../components/invite-dialog";
 import { PlayerDialog } from "../components/player-dialog";
 import { LobbySkeleton } from "../components/ui/skeleton-primitives";
+import { getProfileCardById } from "../lib/theme-utils";
 import type { Player } from "../types";
 import type { Id } from "@/convex/_generated/dataModel";
 
@@ -42,6 +43,7 @@ export function Lobby() {
         status: m.membership.role === "host" ? "ready" : "idle",
         banner: m.user.banner,
         userId: m.user._id as Id<"users">,
+        cardTheme: m.user.cardTheme as string,
       }))
     : [];
 
@@ -121,35 +123,39 @@ export function Lobby() {
       </div>
 
       <ScrollRow>
-        {players.map((player) => (
-          <motion.button
-            key={player.name}
-            onClick={() => setSelected({ player, userId: player.userId })}
-            whileHover={{ y: -3 }}
-            whileTap={{ scale: 0.97 }}
-            transition={{ duration: 0.2, ease: [0.25, 1, 0.5, 1] }}
-            className={`cursor-pointer group relative shrink-0 ${cardW} rounded-xl overflow-hidden bg-card ring-1 ring-border transition-[box-shadow,ring-color] duration-300 text-left`}
-          >
-            <div className={`${compactMode ? "h-12" : "h-16"} w-full`} style={{ background: player.banner }} />
-            <div className="relative px-3 pb-3">
-              <div
-                className="absolute -top-5 left-3 size-10 rounded-full overflow-hidden transition-shadow duration-300"
-                style={{ outline: `3px solid ${player.accent}`, boxShadow: glowEffects ? `0 0 10px ${player.accent}40` : undefined }}
-              >
-                <Image src="/background.png" alt={player.name} fill className="object-cover" />
+        {players.map((player) => {
+          const pc = getProfileCardById(player.cardTheme);
+          return (
+            <motion.button
+              key={player.name}
+              onClick={() => setSelected({ player, userId: player.userId })}
+              whileHover={{ y: -3 }}
+              whileTap={{ scale: 0.97 }}
+              transition={{ duration: 0.2, ease: [0.25, 1, 0.5, 1] }}
+              className={`cursor-pointer group relative shrink-0 ${cardW} rounded-xl overflow-hidden transition-[box-shadow,ring-color] duration-300 text-left`}
+              style={{ backgroundColor: pc.nameBg, border: `1px solid ${pc.borderColor}` }}
+            >
+              <div className={`${compactMode ? "h-12" : "h-16"} w-full`} style={{ background: player.banner ?? `linear-gradient(135deg, ${pc.avatarRing}, ${pc.avatarRing}80)` }} />
+              <div className="relative px-3 pb-3">
+                <div
+                  className="absolute -top-5 left-3 size-10 rounded-full overflow-hidden transition-shadow duration-300"
+                  style={{ boxShadow: `0 0 0 3px ${pc.avatarRing}${glowEffects ? `, 0 0 10px ${pc.avatarRing}40` : ""}` }}
+                >
+                  <Image src="/background.png" alt={player.name} fill className="object-cover" />
+                </div>
+                <div className="pt-7">
+                  <p className="text-sm font-bold truncate" style={{ color: pc.nameColor, textShadow: glowEffects ? `0 0 8px ${pc.nameColor}60` : undefined }}>{player.name}</p>
+                  <p className="text-[10px] truncate" style={{ color: pc.tagColor }}>@{player.tag}</p>
+                  <p className="text-[11px] mt-1 truncate" style={{ color: pc.descColor }}>{player.bio}</p>
+                </div>
+                <div className="mt-2 flex items-center gap-1.5">
+                  <StatusDot status={player.status as "ready" | "idle"} />
+                  <StatusLabel status={player.status as "ready" | "idle"} />
+                </div>
               </div>
-              <div className="pt-7">
-                <p className="text-sm font-bold truncate" style={{ color: player.accent, textShadow: glowEffects ? `0 0 8px ${player.accent}60` : undefined }}>{player.name}</p>
-                <p className="text-[10px] text-muted-foreground truncate">@{player.tag}</p>
-                <p className="text-[11px] text-zinc-400 mt-1 truncate">{player.bio}</p>
-              </div>
-              <div className="mt-2 flex items-center gap-1.5">
-                <StatusDot status={player.status as "ready" | "idle"} />
-                <StatusLabel status={player.status as "ready" | "idle"} />
-              </div>
-            </div>
-          </motion.button>
-        ))}
+            </motion.button>
+          );
+        })}
         <div className={`group relative shrink-0 ${cardW} rounded-xl overflow-hidden bg-card ring-1 ring-border transition-all duration-300 opacity-40`}>
           <div className="flex flex-col items-center justify-center h-full min-h-[148px]">
             <span className="text-2xl text-muted-foreground">+</span>

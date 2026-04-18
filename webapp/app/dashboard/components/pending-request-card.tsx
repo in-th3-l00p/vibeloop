@@ -3,6 +3,7 @@
 import Image from "next/image";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { Tick02Icon, Cancel01Icon, TimerIcon } from "@hugeicons/core-free-icons";
+import { getProfileCardById } from "../lib/theme-utils";
 import type { Id } from "@/convex/_generated/dataModel";
 
 export interface PendingRequestUser {
@@ -13,6 +14,7 @@ export interface PendingRequestUser {
   imageUrl: string;
   bio: string;
   banner?: string;
+  cardTheme?: string;
 }
 
 export interface PendingRequestCardProps {
@@ -34,40 +36,48 @@ export function PendingRequestCard({
   onCancel,
   onOpenProfile,
 }: PendingRequestCardProps) {
+  const pc = getProfileCardById(user.cardTheme);
+
   return (
-    <div className="flex items-center gap-3 rounded-lg px-3 py-2.5 bg-primary/5 ring-1 ring-primary/10">
+    <div
+      className="flex items-center gap-3 rounded-lg px-3 py-2.5"
+      style={{ backgroundColor: `${pc.borderColor}`, border: `1px solid ${pc.divider}` }}
+    >
       <button
         onClick={() => onOpenProfile(user)}
-        className="cursor-pointer relative size-9 rounded-full overflow-hidden ring-1 ring-border shrink-0 transition-opacity hover:opacity-80"
+        className="cursor-pointer relative size-9 rounded-full overflow-hidden shrink-0 transition-opacity hover:opacity-80"
+        style={{ boxShadow: `0 0 0 2px ${pc.avatarRing}` }}
       >
         {user.imageUrl ? (
-          <Image src={user.imageUrl} alt={user.username} fill className="object-cover" />
+          <Image src={user.imageUrl} alt={user.username} fill className="object-cover rounded-full" />
         ) : (
-          <Image src="/background.png" alt={user.username} fill className="object-cover" />
+          <Image src="/background.png" alt={user.username} fill className="object-cover rounded-full" />
         )}
       </button>
       <button
         onClick={() => onOpenProfile(user)}
         className="cursor-pointer min-w-0 flex-1 text-left transition-opacity hover:opacity-80"
       >
-        <p className="text-sm font-semibold truncate" style={{ color: user.accent }}>
+        <p className="text-sm font-semibold truncate" style={{ color: pc.nameColor }}>
           {user.username}
         </p>
-        <p className="text-[10px] text-muted-foreground truncate">@{user.tag}</p>
+        <p className="text-[10px] truncate" style={{ color: pc.tagColor }}>@{user.tag}</p>
       </button>
 
       {direction === "incoming" ? (
         <>
           <button
             onClick={() => onAccept(friendshipId)}
-            className="cursor-pointer size-7 rounded-md bg-primary text-primary-foreground flex items-center justify-center transition-opacity hover:opacity-80"
+            className="cursor-pointer size-7 rounded-md flex items-center justify-center transition-opacity hover:opacity-80"
+            style={{ backgroundColor: pc.avatarRing, color: pc.nameBg }}
             title="Accept"
           >
             <HugeiconsIcon icon={Tick02Icon} size={14} strokeWidth={3} />
           </button>
           <button
             onClick={() => onDecline(friendshipId)}
-            className="cursor-pointer size-7 rounded-md bg-secondary text-destructive ring-1 ring-border flex items-center justify-center transition-opacity hover:opacity-80"
+            className="cursor-pointer size-7 rounded-md flex items-center justify-center transition-opacity hover:opacity-80"
+            style={{ backgroundColor: `${pc.borderColor}`, color: "#f43f5e", border: `1px solid ${pc.divider}` }}
             title="Decline"
           >
             <HugeiconsIcon icon={Cancel01Icon} size={14} strokeWidth={2} />
@@ -76,7 +86,8 @@ export function PendingRequestCard({
       ) : (
         <button
           onClick={() => onCancel(friendshipId)}
-          className="cursor-pointer flex items-center gap-1.5 rounded-md bg-secondary text-muted-foreground ring-1 ring-border px-2 py-1 text-[10px] uppercase tracking-wider transition-all hover:text-foreground"
+          className="cursor-pointer flex items-center gap-1.5 rounded-md px-2 py-1 text-[10px] uppercase tracking-wider transition-all hover:opacity-80"
+          style={{ backgroundColor: `${pc.borderColor}`, color: pc.tagColor, border: `1px solid ${pc.divider}` }}
           title="Cancel request"
         >
           <HugeiconsIcon icon={TimerIcon} size={12} />

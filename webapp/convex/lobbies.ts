@@ -1,5 +1,6 @@
 import { v } from "convex/values";
 import { mutation, query, QueryCtx } from "./_generated/server";
+import { getUserCardTheme } from "./lib/getUserCardTheme";
 
 async function getCurrentUser(ctx: QueryCtx) {
   const identity = await ctx.auth.getUserIdentity();
@@ -162,7 +163,8 @@ export const getMyLobby = query({
     for (const m of memberDocs) {
       const memberUser = await ctx.db.get(m.userId);
       if (memberUser) {
-        members.push({ membership: m, user: memberUser });
+        const cardTheme = await getUserCardTheme(ctx, m.userId);
+        members.push({ membership: m, user: { ...memberUser, cardTheme } });
       }
     }
 

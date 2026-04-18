@@ -12,6 +12,7 @@ import { PlayerDialog } from "./player-dialog";
 import { PendingRequestCard, type PendingRequestUser } from "./pending-request-card";
 import { useFriends } from "@/hooks/use-friends";
 import { usePendingRequests } from "@/hooks/use-pending-requests";
+import { getProfileCardById } from "../lib/theme-utils";
 import type { Player } from "../types";
 import type { Id } from "@/convex/_generated/dataModel";
 
@@ -141,6 +142,7 @@ export function Friends() {
                 {sorted.map((f) => {
                   const friend = f.user;
                   const status = f.presence.status;
+                  const pc = getProfileCardById(friend.cardTheme);
                   return (
                     <button
                       key={friend._id}
@@ -163,7 +165,7 @@ export function Friends() {
                         <div
                           className="size-9 rounded-full overflow-hidden transition-shadow duration-300"
                           style={{
-                            boxShadow: `0 0 0 1px ${friend.accent}40${status !== "offline" ? `, 0 0 8px ${friend.accent}30` : ""}`,
+                            boxShadow: `0 0 0 2px ${pc.avatarRing}${status !== "offline" ? `, 0 0 8px ${pc.avatarRing}30` : ""}`,
                           }}
                         >
                           {friend.imageUrl ? (
@@ -180,13 +182,13 @@ export function Friends() {
                         <p
                           className="text-sm font-semibold truncate"
                           style={{
-                            color: status === "offline" ? "#71717a" : friend.accent,
-                            textShadow: status !== "offline" ? `0 0 6px ${friend.accent}40` : undefined,
+                            color: status === "offline" ? pc.tagColor : pc.nameColor,
+                            textShadow: status !== "offline" ? `0 0 6px ${pc.nameColor}40` : undefined,
                           }}
                         >
                           {friend.username}
                         </p>
-                        <p className="text-[10px] text-muted-foreground truncate">@{friend.tag}</p>
+                        <p className="text-[10px] truncate" style={{ color: pc.tagColor }}>@{friend.tag}</p>
                       </div>
                       <StatusLabel status={status} />
                     </button>
