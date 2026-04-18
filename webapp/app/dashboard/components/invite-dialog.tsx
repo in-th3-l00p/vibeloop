@@ -8,6 +8,7 @@ import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle, Dialog
 import { StatusDot } from "./ui/status-indicator";
 import { useFriends } from "@/hooks/use-friends";
 import { FriendsSkeleton } from "./ui/skeleton-primitives";
+import { getProfileCardById } from "../lib/theme-utils";
 
 const statusOrder = { online: 0, "in-game": 1, offline: 2 } as const;
 
@@ -81,21 +82,26 @@ export function InviteDialog({ children }: { children: React.ReactNode }) {
               const status = f.presence.status;
               const isSelected = selected.has(friend._id);
               const isOffline = status === "offline";
+              const pc = getProfileCardById(friend.cardTheme);
               return (
                 <button
                   key={friend._id}
                   onClick={() => !isOffline && toggle(friend._id)}
                   disabled={isOffline}
                   className={`cursor-pointer w-full flex items-center gap-3 rounded-lg px-3 py-2.5 transition-all duration-200 ${
-                    isSelected ? "bg-primary/10 ring-1 ring-primary/20" : "hover:bg-accent"
+                    isSelected ? "ring-1 ring-primary/30" : "hover:brightness-125"
                   } ${isOffline ? "opacity-40 cursor-not-allowed" : ""}`}
+                  style={{ backgroundColor: pc.nameBg, border: `1px solid ${isSelected ? pc.avatarRing : pc.borderColor}` }}
                 >
                   <div className="relative shrink-0">
-                    <div className="size-9 rounded-full overflow-hidden ring-1 ring-border">
+                    <div
+                      className="size-9 rounded-full overflow-hidden"
+                      style={{ boxShadow: `0 0 0 2px ${pc.avatarRing}` }}
+                    >
                       {friend.imageUrl ? (
-                        <Image src={friend.imageUrl} alt={friend.username} fill className="object-cover" />
+                        <Image src={friend.imageUrl} alt={friend.username} fill className="object-cover rounded-full" />
                       ) : (
-                        <Image src="/background.png" alt={friend.username} fill className="object-cover" />
+                        <Image src="/background.png" alt={friend.username} fill className="object-cover rounded-full" />
                       )}
                     </div>
                     <span className="absolute -bottom-0.5 -right-0.5">
@@ -106,11 +112,11 @@ export function InviteDialog({ children }: { children: React.ReactNode }) {
                   <div className="min-w-0 flex-1 text-left">
                     <p
                       className="text-sm font-semibold truncate"
-                      style={{ color: isOffline ? undefined : friend.accent }}
+                      style={{ color: isOffline ? pc.tagColor : pc.nameColor }}
                     >
                       {friend.username}
                     </p>
-                    <p className="text-[10px] text-muted-foreground truncate">@{friend.tag}</p>
+                    <p className="text-[10px] truncate" style={{ color: pc.tagColor }}>@{friend.tag}</p>
                   </div>
 
                   {isOffline ? (
