@@ -344,3 +344,55 @@ export const getMySession = query({
     return null;
   },
 });
+
+export const createAndStartForLobby = mutation({
+  args: {
+    lobbyId: v.id("lobbies"),
+    gameName: v.string(),
+    maxPlayers: v.number(),
+  },
+  handler: async (ctx, args) => {
+    const user = await getCurrentUser(ctx);
+
+    // Verify user is host of this lobby
+    const lobbyMembers = await ctx.db
+      .query("lobbyMembers")
+      .withIndex("by_lobbyId", (q) => q.eq("lobbyId", args.lobbyId))
+      .take(200);
+    const myMembership = lobbyMembers.find((m) => m.userId === user._id);
+
+    if (!myMembership || myMembership.role !== "host") {
+      throw new Error("Only the lobby host can start a game");
+    }
+
+    if (lobbyMembers.length < 2) {
+      throw new Error("Need at least 2 players in the lobby");
+    }
+
+    // Create session
+    const sessionId = await ctx.db.insert("gameSessions", {
+      lobbyId: args.lobbyId,
+      gameName: args.gameName,
+      createdBy: user._id,
+      maxPlayers: args.maxPlayers,
+      status: "waiting",
+    });
+
+    // Enroll all lobby members as ready
+    for (const member of lobbyMembers) {
+      await ctx.db.insert("sessionMembers", {
+        sessionId,
+        userId: member.userId,
+        status: "ready",
+      });
+    }
+
+    // Start session
+    await ctx.db.patch(sessionId, {
+      status: "playing",
+      startedAt: Date.now(),
+    });
+
+    return sessionId;
+  },
+});

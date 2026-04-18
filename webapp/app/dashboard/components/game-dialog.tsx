@@ -29,10 +29,7 @@ export function GameDialog({
   const router = useRouter();
   const [starting, setStarting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const createSession = useMutation(api.sessions.create);
-  const joinSession = useMutation(api.sessions.join);
-  const setReady = useMutation(api.sessions.setReady);
-  const startSession = useMutation(api.sessions.start);
+  const createAndStart = useMutation(api.sessions.createAndStartForLobby);
   const initPoker = useMutation(api.poker.mutations.initializePokerGame);
 
   const stat = stats.find((s) => s.gameName === game.name);
@@ -128,27 +125,12 @@ export function GameDialog({
               setStarting(true);
               setError(null);
               try {
-                // Create session
-                const sessionId = await createSession({
+                const sessionId = await createAndStart({
                   lobbyId: myLobby.lobby._id,
                   gameName: game.name,
                   maxPlayers: 8,
                 });
 
-                // Auto-join all lobby members + set ready
-                for (const m of myLobby.members) {
-                  try {
-                    await joinSession({ sessionId });
-                  } catch { /* already joined */ }
-                  try {
-                    await setReady({ sessionId });
-                  } catch { /* already ready */ }
-                }
-
-                // Start the session
-                await startSession({ sessionId });
-
-                // Initialize poker if it's Texas Hold'em
                 if (game.name === "Texas Hold'em") {
                   await initPoker({ sessionId });
                   onOpenChange(false);
