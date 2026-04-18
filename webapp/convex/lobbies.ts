@@ -228,6 +228,46 @@ export const rename = mutation({
   },
 });
 
+export const transferHost = mutation({
+  args: {
+    lobbyId: v.id("lobbies"),
+    targetUserId: v.id("users"),
+  },
+  handler: async (ctx, args) => {
+    const user = await getCurrentUser(ctx);
+    const lobby = await ctx.db.get(args.lobbyId);
+
+    if (!lobby) {
+      throw new Error("Lobby not found");
+    }
+    if (lobby.hostId !== user._id) {
+      throw new Error("Only the host can transfer leadership");
+    }
+    if (args.targetUserId === user._id) {
+      throw new Error("You are already the host");
+    }
+
+    const members = await ctx.db
+      .query("lobbyMembers")
+      .withIndex("by_lobbyId", (q) => q.eq("lobbyId", args.lobbyId))
+      .take(200);
+
+    const currentHostMembership = members.find((m) => m.userId === user._id);
+    const targetMembership = members.find((m) => m.userId === args.targetUserId);
+
+    if (!targetMembership) {
+      throw new Error("User is not in this lobby");
+    }
+
+    // Swap roles
+    if (currentHostMembership) {
+      await ctx.db.patch(currentHostMembership._id, { role: "member" });
+    }
+    await ctx.db.patch(targetMembership._id, { role: "host" });
+    await ctx.db.patch(args.lobbyId, { hostId: args.targetUserId });
+  },
+});
+
 export const kick = mutation({
   args: {
     lobbyId: v.id("lobbies"),

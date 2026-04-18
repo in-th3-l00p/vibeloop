@@ -4,12 +4,14 @@ import { useState } from "react";
 import Image from "next/image";
 import { motion } from "motion/react";
 import { HugeiconsIcon } from "@hugeicons/react";
-import { BubbleChatIcon, Add01Icon, Crown02Icon } from "@hugeicons/core-free-icons";
+import { BubbleChatIcon, Add01Icon, Crown02Icon, UserIcon, UserRemove01Icon } from "@hugeicons/core-free-icons";
 import { Sheet, SheetTrigger, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { ContextMenu, ContextMenuTrigger, ContextMenuContent, ContextMenuItem, ContextMenuSeparator } from "@/components/ui/context-menu";
 import { useDashboard } from "../dashboard-context";
 import { useLobby } from "@/hooks/use-lobby";
 import { useLobbyChat } from "@/hooks/use-lobby-chat";
+import { useCurrentUser } from "@/hooks/use-current-user";
 import { ScrollRow } from "../components/ui/scroll-row";
 import { StatusDot, StatusLabel } from "../components/ui/status-indicator";
 import { InviteDialog } from "../components/invite-dialog";
@@ -32,8 +34,10 @@ export function Lobby() {
   const [confirmNewOpen, setConfirmNewOpen] = useState(false);
   const [editingName, setEditingName] = useState(false);
   const [draftName, setDraftName] = useState("");
+  const [kickTarget, setKickTarget] = useState<{ userId: Id<"users">; name: string } | null>(null);
 
-  const { myLobby, lobbyId, isLoading, isHost, isSolo, createNew, rename } = useLobby();
+  const { user: currentUser } = useCurrentUser();
+  const { myLobby, lobbyId, isLoading, isHost, isSolo, createNew, rename, kick, transferHost } = useLobby();
   const { messages: liveMessages, send } = useLobbyChat(lobbyId);
   const [chatInput, setChatInput] = useState("");
 
@@ -210,13 +214,25 @@ export function Lobby() {
       <ScrollRow>
         {players.map((player) => {
           const pc = getProfileCardById(player.cardTheme);
-          return (
-            <motion.button
+          const isSelf = currentUser?._id === player.userId;
+          const canManage = isHost && !isSelf;
+
+          const card = (
+            <motion.div
               key={player.userId}
-              onClick={() => setSelected({ player, userId: player.userId })}
               whileHover={{ y: -3 }}
-              whileTap={{ scale: 0.97 }}
               transition={{ duration: 0.2, ease: [0.25, 1, 0.5, 1] }}
+              onClick={(e) => {
+                e.preventDefault();
+                const rect = e.currentTarget.getBoundingClientRect();
+                e.currentTarget.dispatchEvent(
+                  new MouseEvent("contextmenu", {
+                    bubbles: true,
+                    clientX: rect.left + rect.width / 2,
+                    clientY: rect.top + rect.height / 2,
+                  }),
+                );
+              }}
               className={`cursor-pointer group relative shrink-0 ${cardW} rounded-xl overflow-hidden transition-[box-shadow,ring-color] duration-300 text-left`}
               style={{ backgroundColor: pc.nameBg, border: `1px solid ${pc.borderColor}` }}
             >
@@ -243,7 +259,43 @@ export function Lobby() {
                   <StatusLabel status={player.status as "ready" | "idle"} />
                 </div>
               </div>
-            </motion.button>
+            </motion.div>
+          );
+
+          return (
+            <ContextMenu key={player.userId}>
+              <ContextMenuTrigger asChild>
+                {card}
+              </ContextMenuTrigger>
+              <ContextMenuContent className="w-44">
+                <ContextMenuItem
+                  onClick={() => setSelected({ player, userId: player.userId })}
+                  className="gap-2 text-xs"
+                >
+                  <HugeiconsIcon icon={UserIcon} size={14} />
+                  View Profile
+                </ContextMenuItem>
+                {canManage && (
+                  <>
+                    <ContextMenuSeparator />
+                    <ContextMenuItem
+                      onClick={() => transferHost(player.userId)}
+                      className="gap-2 text-xs"
+                    >
+                      <HugeiconsIcon icon={Crown02Icon} size={14} />
+                      Make Leader
+                    </ContextMenuItem>
+                    <ContextMenuItem
+                      onClick={() => setKickTarget({ userId: player.userId, name: player.name })}
+                      className="gap-2 text-xs text-destructive focus:text-destructive"
+                    >
+                      <HugeiconsIcon icon={UserRemove01Icon} size={14} />
+                      Kick
+                    </ContextMenuItem>
+                  </>
+                )}
+              </ContextMenuContent>
+            </ContextMenu>
           );
         })}
         <div className={`group relative shrink-0 ${cardW} rounded-xl overflow-hidden bg-card ring-1 ring-border transition-all duration-300 opacity-40`}>
@@ -253,6 +305,35 @@ export function Lobby() {
           </div>
         </div>
       </ScrollRow>
+
+      {/* Kick Confirmation Dialog */}
+      <Dialog open={!!kickTarget} onOpenChange={(open) => { if (!open) setKickTarget(null); }}>
+        <DialogContent className="sm:max-w-xs">
+          <DialogHeader>
+            <DialogTitle>Kick {kickTarget?.name}?</DialogTitle>
+            <DialogDescription>
+              They&apos;ll be removed from the lobby and placed in their own lobby.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex gap-2 pt-2">
+            <button
+              onClick={() => setKickTarget(null)}
+              className="cursor-pointer flex-1 rounded-lg bg-secondary text-secondary-foreground ring-1 ring-border py-2 text-xs font-medium transition-all hover:bg-secondary/80"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={() => {
+                if (kickTarget) kick(kickTarget.userId);
+                setKickTarget(null);
+              }}
+              className="cursor-pointer flex-1 rounded-lg bg-destructive text-white py-2 text-xs font-medium transition-all hover:opacity-90"
+            >
+              Kick
+            </button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {selected && (
         <PlayerDialog player={selected.player} userId={selected.userId} open={!!selected} onOpenChange={(v) => { if (!v) setSelected(null); }} />

@@ -18,6 +18,7 @@ export function useLobby() {
   const leaveMutation = useMutation(api.lobbies.leave);
   const kickMutation = useMutation(api.lobbies.kick);
   const renameMutation = useMutation(api.lobbies.rename);
+  const transferHostMutation = useMutation(api.lobbies.transferHost);
 
   // Auto-create lobby if user doesn't have one
   useEffect(() => {
@@ -57,6 +58,11 @@ export function useLobby() {
     return renameMutation({ lobbyId: myLobby.lobby._id, name });
   }
 
+  function transferHost(targetUserId: Id<"users">) {
+    if (!myLobby?.lobby) return;
+    return transferHostMutation({ lobbyId: myLobby.lobby._id, targetUserId });
+  }
+
   return {
     myLobby: myLobby ?? null,
     lobbyId: myLobby?.lobby?._id ?? null,
@@ -70,5 +76,6 @@ export function useLobby() {
     leave,
     kick,
     rename,
+    transferHost,
   };
 }
