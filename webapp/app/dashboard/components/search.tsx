@@ -10,8 +10,8 @@ import { GameDialog } from "./game-dialog";
 import { ProductDialog } from "./product-dialog";
 import { PlayerDialog } from "./player-dialog";
 import { useUserSearch } from "@/hooks/use-user-search";
-import { games } from "../data/mock-games";
-import { marketplaceItems } from "../data/mock-marketplace";
+import { useGames } from "@/hooks/use-games";
+import { useMarketplace } from "@/hooks/use-marketplace";
 import { rarityColors } from "../lib/constants";
 import type { Game, MarketplaceItem, Player } from "../types";
 
@@ -28,17 +28,19 @@ export function Search() {
 
   const deferredQuery = useDeferredValue(inputValue);
   const { results: userResults, isLoading: searchLoading } = useUserSearch(deferredQuery);
+  const { games } = useGames();
+  const { items: marketplaceItems } = useMarketplace();
 
   const q = inputValue.trim().toLowerCase();
 
   const filteredGames = useMemo(
     () => q ? games.filter((g) => matchesQuery(g.name, q) || matchesQuery(g.tag, q)) : games,
-    [q],
+    [q, games],
   );
 
   const filteredItems = useMemo(
     () => q ? marketplaceItems.filter((i) => matchesQuery(i.name, q) || matchesQuery(i.type, q) || matchesQuery(i.rarity, q)) : marketplaceItems,
-    [q],
+    [q, marketplaceItems],
   );
 
   useEffect(() => {

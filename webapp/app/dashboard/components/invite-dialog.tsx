@@ -6,27 +6,34 @@ import { HugeiconsIcon } from "@hugeicons/react";
 import { Search01Icon, Tick02Icon, SentIcon } from "@hugeicons/core-free-icons";
 import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { StatusDot } from "./ui/status-indicator";
-import { friendsList } from "../data/mock-players";
+import { useFriends } from "@/hooks/use-friends";
+import { FriendsSkeleton } from "./ui/skeleton-primitives";
 
 const statusOrder = { online: 0, "in-game": 1, offline: 2 } as const;
-const sorted = [...friendsList].sort((a, b) => statusOrder[a.status] - statusOrder[b.status]);
 
 export function InviteDialog({ children }: { children: React.ReactNode }) {
+  const { friends, isLoading } = useFriends();
   const [search, setSearch] = useState("");
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [sent, setSent] = useState(false);
 
-  const filtered = sorted.filter(
-    (f) =>
-      f.name.toLowerCase().includes(search.toLowerCase()) ||
-      f.tag.toLowerCase().includes(search.toLowerCase())
+  const sorted = [...friends].sort(
+    (a, b) =>
+      (statusOrder[a.presence.status as keyof typeof statusOrder] ?? 2) -
+      (statusOrder[b.presence.status as keyof typeof statusOrder] ?? 2),
   );
 
-  function toggle(tag: string) {
+  const filtered = sorted.filter(
+    (f) =>
+      f.user.username.toLowerCase().includes(search.toLowerCase()) ||
+      f.user.tag.toLowerCase().includes(search.toLowerCase()),
+  );
+
+  function toggle(id: string) {
     setSelected((prev) => {
       const next = new Set(prev);
-      if (next.has(tag)) next.delete(tag);
-      else next.add(tag);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
       return next;
     });
   }
@@ -64,56 +71,65 @@ export function InviteDialog({ children }: { children: React.ReactNode }) {
         </div>
 
         <div className="flex-1 overflow-y-auto scrollbar-thin px-3 py-1">
-          {filtered.length === 0 && (
+          {isLoading ? (
+            <FriendsSkeleton />
+          ) : filtered.length === 0 ? (
             <p className="text-center text-muted-foreground text-xs py-6">No friends found</p>
+          ) : (
+            filtered.map((f) => {
+              const friend = f.user;
+              const status = f.presence.status;
+              const isSelected = selected.has(friend._id);
+              const isOffline = status === "offline";
+              return (
+                <button
+                  key={friend._id}
+                  onClick={() => !isOffline && toggle(friend._id)}
+                  disabled={isOffline}
+                  className={`cursor-pointer w-full flex items-center gap-3 rounded-lg px-3 py-2.5 transition-all duration-200 ${
+                    isSelected ? "bg-primary/10 ring-1 ring-primary/20" : "hover:bg-accent"
+                  } ${isOffline ? "opacity-40 cursor-not-allowed" : ""}`}
+                >
+                  <div className="relative shrink-0">
+                    <div className="size-9 rounded-full overflow-hidden ring-1 ring-border">
+                      {friend.imageUrl ? (
+                        <Image src={friend.imageUrl} alt={friend.username} fill className="object-cover" />
+                      ) : (
+                        <Image src="/background.png" alt={friend.username} fill className="object-cover" />
+                      )}
+                    </div>
+                    <span className="absolute -bottom-0.5 -right-0.5">
+                      <StatusDot status={status} size="md" />
+                    </span>
+                  </div>
+
+                  <div className="min-w-0 flex-1 text-left">
+                    <p
+                      className="text-sm font-semibold truncate"
+                      style={{ color: isOffline ? undefined : friend.accent }}
+                    >
+                      {friend.username}
+                    </p>
+                    <p className="text-[10px] text-muted-foreground truncate">@{friend.tag}</p>
+                  </div>
+
+                  {isOffline ? (
+                    <span className="text-[9px] text-muted-foreground uppercase tracking-wider">offline</span>
+                  ) : (
+                    <div
+                      className={`shrink-0 size-5 rounded-md ring-1 flex items-center justify-center transition-all duration-200 ${
+                        isSelected
+                          ? "bg-primary ring-primary"
+                          : "ring-border"
+                      }`}
+                    >
+                      {isSelected && <HugeiconsIcon icon={Tick02Icon} size={12} className="text-primary-foreground" strokeWidth={3} />}
+                    </div>
+                  )}
+                </button>
+              );
+            })
           )}
-          {filtered.map((friend) => {
-            const isSelected = selected.has(friend.tag);
-            const isOffline = friend.status === "offline";
-            return (
-              <button
-                key={friend.tag}
-                onClick={() => !isOffline && toggle(friend.tag)}
-                disabled={isOffline}
-                className={`cursor-pointer w-full flex items-center gap-3 rounded-lg px-3 py-2.5 transition-all duration-200 ${
-                  isSelected ? "bg-primary/10 ring-1 ring-primary/20" : "hover:bg-accent"
-                } ${isOffline ? "opacity-40 cursor-not-allowed" : ""}`}
-              >
-                <div className="relative shrink-0">
-                  <div className="size-9 rounded-full overflow-hidden ring-1 ring-border">
-                    <Image src="/background.png" alt={friend.name} fill className="object-cover" />
-                  </div>
-                  <span className="absolute -bottom-0.5 -right-0.5">
-                    <StatusDot status={friend.status} size="md" />
-                  </span>
-                </div>
-
-                <div className="min-w-0 flex-1 text-left">
-                  <p
-                    className="text-sm font-semibold truncate"
-                    style={{ color: isOffline ? undefined : friend.accent }}
-                  >
-                    {friend.name}
-                  </p>
-                  <p className="text-[10px] text-muted-foreground truncate">@{friend.tag}</p>
-                </div>
-
-                {isOffline ? (
-                  <span className="text-[9px] text-muted-foreground uppercase tracking-wider">offline</span>
-                ) : (
-                  <div
-                    className={`shrink-0 size-5 rounded-md ring-1 flex items-center justify-center transition-all duration-200 ${
-                      isSelected
-                        ? "bg-primary ring-primary"
-                        : "ring-border"
-                    }`}
-                  >
-                    {isSelected && <HugeiconsIcon icon={Tick02Icon} size={12} className="text-primary-foreground" strokeWidth={3} />}
-                  </div>
-                )}
-              </button>
-            );
-          })}
         </div>
 
         <div className="border-t border-border px-4 py-3 shrink-0">

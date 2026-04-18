@@ -6,10 +6,11 @@ import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle, Dialog
 import { ActionButton } from "./ui/action-button";
 import { StatsSkeleton } from "./ui/skeleton-primitives";
 import { useGameStats } from "@/hooks/use-game-stats";
-import { games } from "../data/mock-games";
+import { useGames } from "@/hooks/use-games";
 
 export function Stats() {
   const { stats, totalPlayed, totalWins, winRate, isLoading } = useGameStats();
+  const { games } = useGames();
 
   const overview = [
     { label: "Games Played", value: String(totalPlayed), icon: GameController01Icon, accent: "#a855f7" },

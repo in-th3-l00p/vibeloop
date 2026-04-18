@@ -1,30 +1,45 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import Link from "next/link";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { ArrowLeft02Icon, Search01Icon } from "@hugeicons/core-free-icons";
 import { rarityColors } from "../lib/constants";
-import { marketplaceItems } from "../data/mock-marketplace";
+import { useMarketplace } from "@/hooks/use-marketplace";
 import { ItemCard } from "../components/item-card";
 import { ProductDialog } from "../components/product-dialog";
 import type { MarketplaceItem } from "../types";
 
-const types = Array.from(new Set(marketplaceItems.map((i) => i.type)));
-const rarities = Array.from(new Set(marketplaceItems.map((i) => i.rarity)));
-
 export default function MarketplacePage() {
+  const { items: marketplaceItems, isLoading } = useMarketplace();
   const [search, setSearch] = useState("");
   const [activeType, setActiveType] = useState<string | null>(null);
   const [activeRarity, setActiveRarity] = useState<string | null>(null);
   const [selected, setSelected] = useState<MarketplaceItem | null>(null);
 
-  const filtered = marketplaceItems.filter((item) => {
-    const matchesSearch = item.name.toLowerCase().includes(search.toLowerCase());
-    const matchesType = !activeType || item.type === activeType;
-    const matchesRarity = !activeRarity || item.rarity === activeRarity;
-    return matchesSearch && matchesType && matchesRarity;
-  });
+  const types = useMemo(() => Array.from(new Set(marketplaceItems.map((i) => i.type))), [marketplaceItems]);
+  const rarities = useMemo(() => Array.from(new Set(marketplaceItems.map((i) => i.rarity))), [marketplaceItems]);
+
+  const filtered = useMemo(
+    () =>
+      marketplaceItems.filter((item) => {
+        const matchesSearch = item.name.toLowerCase().includes(search.toLowerCase());
+        const matchesType = !activeType || item.type === activeType;
+        const matchesRarity = !activeRarity || item.rarity === activeRarity;
+        return matchesSearch && matchesType && matchesRarity;
+      }),
+    [marketplaceItems, search, activeType, activeRarity],
+  );
+
+  if (isLoading) {
+    return (
+      <main className="w-full min-h-screen bg-background text-foreground flex flex-col items-center px-4 py-12">
+        <div className="w-full max-w-xl lg:max-w-3xl">
+          <p className="text-muted-foreground text-sm text-center py-12">Loading marketplace...</p>
+        </div>
+      </main>
+    );
+  }
 
   return (
     <main className="w-full min-h-screen bg-background text-foreground flex flex-col items-center px-4 py-12">

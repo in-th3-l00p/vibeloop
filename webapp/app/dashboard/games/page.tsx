@@ -1,28 +1,44 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import Link from "next/link";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { ArrowLeft02Icon, Search01Icon } from "@hugeicons/core-free-icons";
-import { games } from "../data/mock-games";
+import { useGames } from "@/hooks/use-games";
 import { GameCard } from "../components/game-card";
 import { GameDialog } from "../components/game-dialog";
+import { GamesSkeleton } from "../components/ui/skeleton-primitives";
 import type { Game } from "../types";
 
-const tags = Array.from(new Set(games.map((g) => g.tag)));
-
 export default function GamesPage() {
+  const { games, isLoading } = useGames();
   const [search, setSearch] = useState("");
   const [activeTag, setActiveTag] = useState<string | null>(null);
   const [selected, setSelected] = useState<Game | null>(null);
 
-  const filtered = games.filter((g) => {
-    const matchesSearch =
-      g.name.toLowerCase().includes(search.toLowerCase()) ||
-      g.desc.toLowerCase().includes(search.toLowerCase());
-    const matchesTag = !activeTag || g.tag === activeTag;
-    return matchesSearch && matchesTag;
-  });
+  const tags = useMemo(() => Array.from(new Set(games.map((g) => g.tag))), [games]);
+
+  const filtered = useMemo(
+    () =>
+      games.filter((g) => {
+        const matchesSearch =
+          g.name.toLowerCase().includes(search.toLowerCase()) ||
+          g.desc.toLowerCase().includes(search.toLowerCase());
+        const matchesTag = !activeTag || g.tag === activeTag;
+        return matchesSearch && matchesTag;
+      }),
+    [games, search, activeTag],
+  );
+
+  if (isLoading) {
+    return (
+      <main className="w-full min-h-screen bg-background text-foreground flex flex-col items-center px-4 py-12">
+        <div className="w-full max-w-xl lg:max-w-3xl">
+          <GamesSkeleton />
+        </div>
+      </main>
+    );
+  }
 
   return (
     <main className="w-full min-h-screen bg-background text-foreground flex flex-col items-center px-4 py-12">

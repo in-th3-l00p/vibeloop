@@ -14,7 +14,6 @@ import { StatusDot, StatusLabel } from "../components/ui/status-indicator";
 import { InviteDialog } from "../components/invite-dialog";
 import { PlayerDialog } from "../components/player-dialog";
 import { LobbySkeleton } from "../components/ui/skeleton-primitives";
-import { lobbyPlayers, lobbyMessages } from "../data/mock-players";
 import type { Player } from "../types";
 
 export function Lobby() {
@@ -28,7 +27,6 @@ export function Lobby() {
   const { messages: liveMessages, send } = useLobbyChat(lobbyId);
   const [chatInput, setChatInput] = useState("");
 
-  // Use live data if in a lobby, otherwise show mock data as placeholder
   const players = myLobby
     ? myLobby.members.map((m) => ({
         name: m.user.username,
@@ -38,16 +36,14 @@ export function Lobby() {
         status: m.membership.role === "host" ? "ready" : "idle",
         banner: m.user.banner,
       }))
-    : lobbyPlayers;
+    : [];
 
-  const chatMessages = myLobby
-    ? liveMessages.map((m) => ({
-        from: m.username,
-        accent: m.accent,
-        text: m.text,
-        time: new Date(m._creationTime).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }),
-      }))
-    : lobbyMessages;
+  const chatMessages = liveMessages.map((m) => ({
+    from: m.username,
+    accent: m.accent,
+    text: m.text,
+    time: new Date(m._creationTime).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }),
+  }));
 
   function handleSend() {
     const text = chatInput.trim();

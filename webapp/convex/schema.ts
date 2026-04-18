@@ -134,6 +134,34 @@ export default defineSchema({
     .index("by_contractAddress_and_tokenId", ["contractAddress", "tokenId"])
     .index("by_userId_and_itemSlug", ["userId", "itemSlug"]),
 
+  games: defineTable({
+    name: v.string(),
+    desc: v.string(),
+    players: v.string(),
+    tag: v.string(),
+    accent: v.string(),
+    gradient: v.string(),
+    emoji: v.string(),
+  })
+    .index("by_name", ["name"])
+    .index("by_tag", ["tag"])
+    .searchIndex("search_name", { searchField: "name" }),
+
+  marketplaceItems: defineTable({
+    slug: v.string(),
+    name: v.string(),
+    type: v.string(),
+    price: v.string(),
+    accent: v.string(),
+    gradient: v.string(),
+    rarity: v.string(),
+    desc: v.string(),
+  })
+    .index("by_slug", ["slug"])
+    .index("by_type", ["type"])
+    .index("by_rarity", ["rarity"])
+    .searchIndex("search_name", { searchField: "name" }),
+
   chainSyncState: defineTable({
     contractAddress: v.string(),
     lastBlockSynced: v.number(),
