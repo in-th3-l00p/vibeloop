@@ -31,6 +31,18 @@ async function getCurrentUser(ctx: QueryCtx) {
   return user;
 }
 
+export const getForUser = query({
+  args: {
+    userId: v.id("users"),
+  },
+  handler: async (ctx, args) => {
+    return await ctx.db
+      .query("userSettings")
+      .withIndex("by_userId", (q) => q.eq("userId", args.userId))
+      .unique();
+  },
+});
+
 export const get = query({
   args: {},
   handler: async (ctx) => {
