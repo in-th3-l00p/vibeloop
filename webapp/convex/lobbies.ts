@@ -203,6 +203,31 @@ export const leave = mutation({
   },
 });
 
+export const rename = mutation({
+  args: {
+    lobbyId: v.id("lobbies"),
+    name: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const user = await getCurrentUser(ctx);
+    const lobby = await ctx.db.get(args.lobbyId);
+
+    if (!lobby) {
+      throw new Error("Lobby not found");
+    }
+    if (lobby.hostId !== user._id) {
+      throw new Error("Only the host can rename the lobby");
+    }
+
+    const trimmed = args.name.trim();
+    if (trimmed.length === 0) {
+      throw new Error("Lobby name cannot be empty");
+    }
+
+    await ctx.db.patch(args.lobbyId, { name: trimmed });
+  },
+});
+
 export const kick = mutation({
   args: {
     lobbyId: v.id("lobbies"),

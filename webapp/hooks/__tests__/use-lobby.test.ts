@@ -21,6 +21,11 @@ vi.mock("@/convex/_generated/api", () => ({
       join: "api.lobbies.join",
       leave: "api.lobbies.leave",
       kick: "api.lobbies.kick",
+      rename: "api.lobbies.rename",
+    },
+    users: {
+      getMe: "api.users.getMe",
+      getOrCreateUser: "api.users.getOrCreateUser",
     },
   },
 }));
@@ -42,13 +47,25 @@ describe("useLobby", () => {
       if (ref === "api.lobbies.join") return mockJoin;
       if (ref === "api.lobbies.leave") return mockLeave;
       if (ref === "api.lobbies.kick") return mockKick;
+      if (ref === "api.lobbies.rename") return vi.fn();
       if (ref === "api.lobbies.getOrCreateMyLobby") return mockGetOrCreate;
+      if (ref === "api.users.getOrCreateUser") return vi.fn();
       return vi.fn();
+    });
+    // Default: useQuery returns based on the ref
+    mockUseQuery.mockImplementation((ref: string) => {
+      if (ref === "api.users.getMe") return { _id: "currentUser" };
+      if (ref === "api.lobbies.getMyLobby") return null;
+      if (ref === "api.lobbies.listOpen") return [];
+      return undefined;
     });
   });
 
   it("returns loading state when undefined", () => {
-    mockUseQuery.mockReturnValue(undefined);
+    mockUseQuery.mockImplementation((ref: string) => {
+      if (ref === "api.users.getMe") return { _id: "currentUser" };
+      return undefined; // lobbies queries loading
+    });
     const { result } = renderHook(() => useLobby());
     expect(result.current.isLoading).toBe(true);
     expect(result.current.myLobby).toBeNull();
@@ -56,20 +73,25 @@ describe("useLobby", () => {
 
   it("returns lobby data when available", () => {
     const lobby = {
-      lobby: { _id: "lobby1", name: "Test", hostId: "user1" },
-      members: [{ membership: { role: "host" }, user: { _id: "user1" } }],
+      lobby: { _id: "lobby1", name: "Test", hostId: "currentUser" },
+      members: [{ membership: { role: "host" }, user: { _id: "currentUser" } }],
       sessions: [],
       messages: [],
     };
-    mockUseQuery.mockReturnValueOnce(lobby).mockReturnValueOnce([]);
+    mockUseQuery.mockImplementation((ref: string) => {
+      if (ref === "api.users.getMe") return { _id: "currentUser" };
+      if (ref === "api.lobbies.getMyLobby") return lobby;
+      if (ref === "api.lobbies.listOpen") return [];
+      return undefined;
+    });
     const { result } = renderHook(() => useLobby());
     expect(result.current.isLoading).toBe(false);
     expect(result.current.myLobby).toEqual(lobby);
     expect(result.current.isSolo).toBe(true);
+    expect(result.current.isHost).toBe(true);
   });
 
   it("calls createNew", () => {
-    mockUseQuery.mockReturnValue(null);
     const { result } = renderHook(() => useLobby());
     act(() => {
       result.current.createNew("Game Night");
@@ -78,7 +100,6 @@ describe("useLobby", () => {
   });
 
   it("calls join with lobbyId", () => {
-    mockUseQuery.mockReturnValue(null);
     const { result } = renderHook(() => useLobby());
     act(() => {
       result.current.join("lobby123" as any);
@@ -88,15 +109,20 @@ describe("useLobby", () => {
 
   it("calls kick with targetUserId", () => {
     const lobby = {
-      lobby: { _id: "lobby1", name: "Test", hostId: "user1" },
+      lobby: { _id: "lobby1", name: "Test", hostId: "currentUser" },
       members: [
-        { membership: { role: "host" }, user: { _id: "user1" } },
+        { membership: { role: "host" }, user: { _id: "currentUser" } },
         { membership: { role: "member" }, user: { _id: "user2" } },
       ],
       sessions: [],
       messages: [],
     };
-    mockUseQuery.mockReturnValueOnce(lobby).mockReturnValueOnce([]);
+    mockUseQuery.mockImplementation((ref: string) => {
+      if (ref === "api.users.getMe") return { _id: "currentUser" };
+      if (ref === "api.lobbies.getMyLobby") return lobby;
+      if (ref === "api.lobbies.listOpen") return [];
+      return undefined;
+    });
     const { result } = renderHook(() => useLobby());
     act(() => {
       result.current.kick("user2" as any);
@@ -105,14 +131,12 @@ describe("useLobby", () => {
   });
 
   it("auto-creates lobby when authenticated and no lobby", async () => {
-    mockUseQuery.mockReturnValue(null);
     renderHook(() => useLobby());
     expect(mockGetOrCreate).toHaveBeenCalled();
   });
 
   it("does not auto-create when not authenticated", () => {
     mockUseConvexAuth.mockReturnValue({ isAuthenticated: false });
-    mockUseQuery.mockReturnValue(null);
     renderHook(() => useLobby());
     expect(mockGetOrCreate).not.toHaveBeenCalled();
   });

@@ -30,8 +30,10 @@ export function Lobby() {
   const cardW = compactMode ? "w-32" : "w-40";
   const [selected, setSelected] = useState<SelectedPlayer | null>(null);
   const [confirmNewOpen, setConfirmNewOpen] = useState(false);
+  const [editingName, setEditingName] = useState(false);
+  const [draftName, setDraftName] = useState("");
 
-  const { myLobby, lobbyId, isLoading, isSolo, createNew } = useLobby();
+  const { myLobby, lobbyId, isLoading, isHost, isSolo, createNew, rename } = useLobby();
   const { messages: liveMessages, send } = useLobbyChat(lobbyId);
   const [chatInput, setChatInput] = useState("");
 
@@ -63,9 +65,12 @@ export function Lobby() {
     setChatInput("");
   }
 
+  const [newLobbyName, setNewLobbyName] = useState("");
+
   function handleNewLobby() {
     setConfirmNewOpen(false);
-    createNew();
+    createNew(newLobbyName.trim() || undefined);
+    setNewLobbyName("");
   }
 
   if (isLoading) return <LobbySkeleton />;
@@ -76,7 +81,32 @@ export function Lobby() {
         <div className="flex items-center gap-2">
           <p className="text-[11px] uppercase tracking-[0.3em] text-muted-foreground">Lobby</p>
           {myLobby && (
-            <span className="text-[10px] text-muted-foreground">— {myLobby.lobby.name}</span>
+            editingName ? (
+              <input
+                autoFocus
+                value={draftName}
+                onChange={(e) => setDraftName(e.target.value)}
+                onBlur={() => {
+                  const trimmed = draftName.trim();
+                  if (trimmed && trimmed !== myLobby.lobby.name) rename(trimmed);
+                  setEditingName(false);
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") (e.target as HTMLInputElement).blur();
+                  if (e.key === "Escape") setEditingName(false);
+                }}
+                className="text-[10px] text-muted-foreground bg-card ring-1 ring-border rounded px-1.5 py-0.5 outline-none focus:ring-white/20 w-32"
+                maxLength={30}
+              />
+            ) : (
+              <button
+                onClick={() => { if (isHost) { setDraftName(myLobby.lobby.name); setEditingName(true); } }}
+                className={`text-[10px] text-muted-foreground ${isHost ? "cursor-pointer hover:text-foreground transition-colors" : ""}`}
+                title={isHost ? "Click to rename" : undefined}
+              >
+                — {myLobby.lobby.name}
+              </button>
+            )
           )}
         </div>
         <div className="flex items-center gap-2">
@@ -150,6 +180,14 @@ export function Lobby() {
                   You&apos;ll leave your current lobby. Other members will remain.
                 </DialogDescription>
               </DialogHeader>
+              <input
+                type="text"
+                value={newLobbyName}
+                onChange={(e) => setNewLobbyName(e.target.value)}
+                placeholder="Lobby name (optional)"
+                className="w-full rounded-lg bg-card ring-1 ring-border px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground outline-none focus:ring-white/20"
+                maxLength={30}
+              />
               <div className="flex gap-2 pt-2">
                 <button
                   onClick={() => setConfirmNewOpen(false)}

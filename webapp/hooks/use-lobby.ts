@@ -4,10 +4,12 @@ import { useEffect } from "react";
 import { useQuery, useMutation } from "convex/react";
 import { useConvexAuth } from "convex/react";
 import { api } from "@/convex/_generated/api";
+import { useCurrentUser } from "./use-current-user";
 import { Id } from "@/convex/_generated/dataModel";
 
 export function useLobby() {
   const { isAuthenticated } = useConvexAuth();
+  const { user: currentUser } = useCurrentUser();
   const myLobby = useQuery(api.lobbies.getMyLobby);
   const openLobbies = useQuery(api.lobbies.listOpen);
   const getOrCreateMutation = useMutation(api.lobbies.getOrCreateMyLobby);
@@ -15,6 +17,7 @@ export function useLobby() {
   const joinMutation = useMutation(api.lobbies.join);
   const leaveMutation = useMutation(api.lobbies.leave);
   const kickMutation = useMutation(api.lobbies.kick);
+  const renameMutation = useMutation(api.lobbies.rename);
 
   // Auto-create lobby if user doesn't have one
   useEffect(() => {
@@ -23,15 +26,7 @@ export function useLobby() {
     }
   }, [isAuthenticated, myLobby, getOrCreateMutation]);
 
-  const currentUserId = myLobby?.members.find(
-    (m) => m.membership.role === "host" || true,
-  )?.user._id;
-
-  const isHost = myLobby?.lobby
-    ? myLobby.members.some(
-        (m) => m.membership.role === "host" && m.user._id === myLobby.lobby.hostId,
-      )
-    : false;
+  const isHost = !!(currentUser && myLobby?.lobby && myLobby.lobby.hostId === currentUser._id);
 
   const memberCount = myLobby?.members.length ?? 0;
   const isSolo = memberCount <= 1;
@@ -57,6 +52,11 @@ export function useLobby() {
     return kickMutation({ lobbyId: myLobby.lobby._id, targetUserId });
   }
 
+  function rename(name: string) {
+    if (!myLobby?.lobby) return;
+    return renameMutation({ lobbyId: myLobby.lobby._id, name });
+  }
+
   return {
     myLobby: myLobby ?? null,
     lobbyId: myLobby?.lobby?._id ?? null,
@@ -69,5 +69,6 @@ export function useLobby() {
     join,
     leave,
     kick,
+    rename,
   };
 }
