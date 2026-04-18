@@ -6,7 +6,6 @@ import { HugeiconsIcon } from "@hugeicons/react";
 import {
   UserAdd01Icon,
   UserRemove01Icon,
-  BubbleChatIcon,
   GameController01Icon,
   Tick02Icon,
   Cancel01Icon,
@@ -147,14 +146,6 @@ export function PlayerDialog({ player, userId, open, onOpenChange }: PlayerDialo
                   >
                     <HugeiconsIcon icon={GameController01Icon} size={14} />
                     Invite to Lobby
-                  </motion.button>
-                  <motion.button
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.93 }}
-                    className="cursor-pointer flex items-center justify-center rounded-lg px-3 py-2.5"
-                    style={{ backgroundColor: `${pc.borderColor}`, color: pc.tagColor, border: `1px solid ${pc.divider}` }}
-                  >
-                    <HugeiconsIcon icon={BubbleChatIcon} size={14} />
                   </motion.button>
                   <motion.button
                     whileHover={{ scale: 1.05 }}
