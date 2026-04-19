@@ -105,42 +105,67 @@ export function Lobby() {
   }
 
   // Event-driven game launch dialog
+  const LAUNCH_DURATION = 5;
   const { events, dismiss } = useEvents();
   const [launchEvent, setLaunchEvent] = useState<{
     eventId: string;
     gameName: string;
     sessionId: string;
+    startedAt: number;
   } | null>(null);
-  const [launchCountdown, setLaunchCountdown] = useState(5);
+  const [launchCountdown, setLaunchCountdown] = useState(LAUNCH_DURATION);
 
   useEffect(() => {
-    if (launchEvent) return; // already showing a launch dialog
+    if (launchEvent) return;
     const gameStarted = events.find((e) => e.type === "gameStarted");
-    if (gameStarted) {
-      setLaunchEvent({
-        eventId: gameStarted._id,
-        gameName: gameStarted.payload?.gameName ?? "Game",
-        sessionId: gameStarted.payload?.sessionId ?? "",
-      });
-      setLaunchCountdown(5);
-    }
-  }, [events, launchEvent]);
+    if (!gameStarted) return;
 
-  useEffect(() => {
-    if (!launchEvent) return;
-    if (launchCountdown <= 0) {
-      dismiss(launchEvent.eventId as any);
+    const startedAt: number = gameStarted.payload?.startedAt ?? Date.now();
+    const elapsed = (Date.now() - startedAt) / 1000;
+
+    if (elapsed >= LAUNCH_DURATION) {
+      // Timer already expired — dismiss and redirect instantly
+      dismiss(gameStarted._id);
       const route =
-        launchEvent.gameName === "Texas Hold'em"
-          ? `/dashboard/poker?session=${launchEvent.sessionId}`
+        (gameStarted.payload?.gameName ?? "") === "Texas Hold'em"
+          ? `/dashboard/poker?session=${gameStarted.payload?.sessionId}`
           : `/dashboard`;
-      setLaunchEvent(null);
       router.push(route);
       return;
     }
-    const timer = setTimeout(() => setLaunchCountdown((c) => c - 1), 1000);
-    return () => clearTimeout(timer);
-  }, [launchEvent, launchCountdown, dismiss, router]);
+
+    setLaunchEvent({
+      eventId: gameStarted._id,
+      gameName: gameStarted.payload?.gameName ?? "Game",
+      sessionId: gameStarted.payload?.sessionId ?? "",
+      startedAt,
+    });
+    setLaunchCountdown(Math.ceil(LAUNCH_DURATION - elapsed));
+  }, [events, launchEvent, dismiss, router]);
+
+  useEffect(() => {
+    if (!launchEvent) return;
+
+    const tick = () => {
+      const elapsed = (Date.now() - launchEvent.startedAt) / 1000;
+      const remaining = Math.max(0, LAUNCH_DURATION - elapsed);
+      setLaunchCountdown(Math.ceil(remaining));
+
+      if (remaining <= 0) {
+        dismiss(launchEvent.eventId as any);
+        const route =
+          launchEvent.gameName === "Texas Hold'em"
+            ? `/dashboard/poker?session=${launchEvent.sessionId}`
+            : `/dashboard`;
+        setLaunchEvent(null);
+        router.push(route);
+      }
+    };
+
+    tick();
+    const interval = setInterval(tick, 200);
+    return () => clearInterval(interval);
+  }, [launchEvent, dismiss, router]);
 
   if (isLoading) return <LobbySkeleton />;
 

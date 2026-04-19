@@ -392,15 +392,17 @@ export const createAndStartForLobby = mutation({
     }
 
     // Start session
+    const startedAt = Date.now();
     await ctx.db.patch(sessionId, {
       status: "playing",
-      startedAt: Date.now(),
+      startedAt,
     });
 
     // Emit gameStarted event to all session members
     await emitToSessionMembers(ctx, sessionId, "gameStarted", {
       sessionId,
       gameName: args.gameName,
+      startedAt,
     });
 
     return sessionId;
