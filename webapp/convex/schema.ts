@@ -230,6 +230,7 @@ export default defineSchema({
     roundStartPlayerIndex: v.optional(v.number()),
     handNumber: v.number(),
     countdownStartedAt: v.optional(v.number()),
+    turnDeadline: v.optional(v.number()),
     lastAction: v.optional(
       v.object({
         userId: v.id("users"),

@@ -233,6 +233,7 @@ export default function PokerPage() {
                 sittingOut={p.sittingOut}
                 readyForNext={p.readyForNext}
                 isHandComplete={state.phase === "handComplete"}
+                turnDeadline={state.turnDeadline}
                 isDealer={p.seatIndex === state.dealerIndex}
                 isCurrentTurn={state.currentPlayerIndex === p.seatIndex}
                 isSelf={p.userId === currentUser?._id}
@@ -297,6 +298,7 @@ export default function PokerPage() {
                 sittingOut={p.sittingOut}
                 readyForNext={p.readyForNext}
                 isHandComplete={state.phase === "handComplete"}
+                turnDeadline={state.turnDeadline}
                 isDealer={p.seatIndex === state.dealerIndex}
                 isCurrentTurn={state.currentPlayerIndex === p.seatIndex}
                 isSelf={p.userId === currentUser?._id}

@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import { motion } from "motion/react";
 import { PokerCard } from "./poker-card";
 
@@ -14,6 +15,7 @@ interface PlayerSeatProps {
   sittingOut?: boolean;
   readyForNext?: boolean;
   isHandComplete?: boolean;
+  turnDeadline?: number;
   isDealer: boolean;
   isCurrentTurn: boolean;
   isSelf: boolean;
@@ -31,6 +33,7 @@ export function PlayerSeat({
   sittingOut,
   readyForNext,
   isHandComplete,
+  turnDeadline,
   isDealer,
   isCurrentTurn,
   isSelf,
@@ -99,6 +102,7 @@ export function PlayerSeat({
                   ? "ALL IN"
                   : `${chips.toLocaleString()}`}
         </p>
+        {isCurrentTurn && turnDeadline && <TurnTimer deadline={turnDeadline} />}
       </div>
 
       {/* Current bet */}
@@ -115,5 +119,32 @@ export function PlayerSeat({
         </motion.div>
       )}
     </motion.div>
+  );
+}
+
+function TurnTimer({ deadline }: { deadline: number }) {
+  const [pct, setPct] = useState(100);
+  const total = 30; // matches TURN_TIMEOUT_MS / 1000
+
+  useEffect(() => {
+    const tick = () => {
+      const remaining = Math.max(0, (deadline - Date.now()) / 1000);
+      setPct((remaining / total) * 100);
+    };
+    tick();
+    const interval = setInterval(tick, 200);
+    return () => clearInterval(interval);
+  }, [deadline]);
+
+  const color =
+    pct > 50 ? "bg-emerald-400" : pct > 20 ? "bg-amber-400" : "bg-red-400";
+
+  return (
+    <div className="w-full h-1 rounded-full bg-white/10 mt-1 overflow-hidden">
+      <div
+        className={`h-full rounded-full transition-all duration-200 ${color}`}
+        style={{ width: `${pct}%` }}
+      />
+    </div>
   );
 }

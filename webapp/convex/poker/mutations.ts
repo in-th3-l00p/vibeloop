@@ -22,9 +22,10 @@ import { emitToSessionMembers } from "../events";
 const STARTING_CHIPS = 1000;
 const SMALL_BLIND = 10;
 const BIG_BLIND = 20;
+const TURN_TIMEOUT_MS = 30_000; // 30 seconds per decision
 
 async function dealNextHand(
-  ctx: { db: MutationCtx["db"]; runMutation: MutationCtx["runMutation"] },
+  ctx: { db: MutationCtx["db"]; runMutation: MutationCtx["runMutation"]; scheduler: MutationCtx["scheduler"] },
   state: Doc<"pokerState">,
   sessionId: Id<"gameSessions">,
 ) {
@@ -125,6 +126,7 @@ async function dealNextHand(
   if (bbPlayer.chips === 0) bbPlayer.allIn = true;
 
   const firstToAct = getNextActivePlayerIndex(players, bbIndex);
+  const deadline = await scheduleTurnTimer(ctx, sessionId);
 
   await ctx.db.patch(state._id, {
     phase: "preflop",
@@ -146,6 +148,7 @@ async function dealNextHand(
     roundStartPlayerIndex: firstToAct,
     handNumber: state.handNumber + 1,
     countdownStartedAt: undefined,
+    turnDeadline: deadline,
     lastAction: undefined,
     winnersLastHand: undefined,
   });
@@ -226,6 +229,7 @@ export const initializePokerGame = mutation({
 
     // First to act is after BB
     const firstToAct = (bbIndex + 1) % players.length;
+    const deadline = await scheduleTurnTimer(ctx, args.sessionId);
 
     await ctx.db.insert("pokerState", {
       sessionId: args.sessionId,
@@ -246,6 +250,7 @@ export const initializePokerGame = mutation({
       lastRaiseAmount: BIG_BLIND,
       minRaise: BIG_BLIND,
       roundStartPlayerIndex: firstToAct,
+      turnDeadline: deadline,
       handNumber: 1,
     });
   },
@@ -407,10 +412,12 @@ export const playerAction = mutation({
     if (bettingDone) {
       await advancePhase(ctx, state._id, state, players, lastAction);
     } else {
+      const deadline = await scheduleTurnTimer(ctx, args.sessionId);
       await ctx.db.patch(state._id, {
         players,
         currentPlayerIndex: nextIdx === -1 ? state.currentPlayerIndex : nextIdx,
         lastAction,
+        turnDeadline: deadline,
         roundStartPlayerIndex: newRoundStart,
         lastRaiseAmount:
           args.action === "raise" ? (args.amount ?? state.lastRaiseAmount) : state.lastRaiseAmount,
@@ -428,7 +435,7 @@ function calculateTotalPot(players: PlayerState[]): number {
 }
 
 async function advancePhase(
-  ctx: { db: any },
+  ctx: { db: any; scheduler: MutationCtx["scheduler"] },
   stateId: any,
   state: any,
   players: PlayerState[],
@@ -514,6 +521,7 @@ async function advancePhase(
       pots: [{ amount: 0, eligible: [] }],
       currentPlayerIndex: -1,
       lastAction,
+      turnDeadline: undefined,
       winnersLastHand,
     });
   } else {
@@ -521,6 +529,7 @@ async function advancePhase(
     const firstToAct = getNextActivePlayerIndex(players, state.dealerIndex);
 
     const pots = calculatePots(players);
+    const deadline = await scheduleTurnTimer(ctx, state.sessionId);
 
     await ctx.db.patch(stateId, {
       phase: nextPhase,
@@ -533,9 +542,102 @@ async function advancePhase(
       lastRaiseAmount: state.bigBlind,
       minRaise: state.bigBlind,
       roundStartPlayerIndex: firstToAct,
+      turnDeadline: deadline,
     });
   }
 }
+
+/** Schedule a turn timer. Returns the deadline timestamp. */
+async function scheduleTurnTimer(
+  ctx: { scheduler: MutationCtx["scheduler"] },
+  sessionId: Id<"gameSessions">,
+): Promise<number> {
+  const deadline = Date.now() + TURN_TIMEOUT_MS;
+  await ctx.scheduler.runAfter(
+    TURN_TIMEOUT_MS,
+    internal.poker.mutations.autoFold,
+    { sessionId, turnDeadline: deadline },
+  );
+  return deadline;
+}
+
+export const autoFold = internalMutation({
+  args: {
+    sessionId: v.id("gameSessions"),
+    turnDeadline: v.number(),
+  },
+  handler: async (ctx, args) => {
+    const state = await ctx.db
+      .query("pokerState")
+      .withIndex("by_sessionId", (q) => q.eq("sessionId", args.sessionId))
+      .unique();
+    if (!state) return;
+
+    // Only auto-fold if the deadline matches (player hasn't acted yet)
+    if (state.turnDeadline !== args.turnDeadline) return;
+    if (state.phase === "handComplete" || state.phase === "showdown") return;
+    if (state.currentPlayerIndex < 0) return;
+
+    const players = state.players.map((p) => ({ ...p }));
+    const playerIdx = state.currentPlayerIndex;
+    const player = players[playerIdx];
+    if (!player || player.folded || player.allIn || player.eliminated) return;
+
+    // Auto-fold
+    player.folded = true;
+
+    const lastAction = {
+      userId: player.userId,
+      action: "fold",
+    };
+
+    // Check if only 1 non-folded player remains
+    if (countActivePlayers(players) === 1) {
+      const winner = players.find((p) => !p.folded && !p.eliminated)!;
+      const totalPot = players.reduce((s, p) => s + p.totalBetThisRound, 0);
+      winner.chips += totalPot;
+      for (const p of players) {
+        p.currentBet = 0;
+        p.totalBetThisRound = 0;
+      }
+      await ctx.db.patch(state._id, {
+        phase: "handComplete",
+        players,
+        pots: [{ amount: 0, eligible: [] }],
+        currentPlayerIndex: -1,
+        lastAction,
+        turnDeadline: undefined,
+        winnersLastHand: [
+          { userId: winner.userId, amount: totalPot, handName: "Last Standing" },
+        ],
+      });
+      return;
+    }
+
+    // Advance to next player
+    const nextIdx = getNextActivePlayerIndex(players, playerIdx);
+    const highBet = getHighestBet(players);
+    const allEqual = players
+      .filter((p) => !p.folded && !p.allIn && !p.eliminated)
+      .every((p) => p.currentBet === highBet);
+    const newRoundStart = state.roundStartPlayerIndex ?? state.currentPlayerIndex;
+    const bettingDone =
+      countPlayersCanAct(players) === 0 ||
+      (allEqual && nextIdx === newRoundStart);
+
+    if (bettingDone) {
+      await advancePhase(ctx, state._id, state, players, lastAction);
+    } else {
+      const deadline = await scheduleTurnTimer(ctx, args.sessionId);
+      await ctx.db.patch(state._id, {
+        players,
+        currentPlayerIndex: nextIdx === -1 ? state.currentPlayerIndex : nextIdx,
+        lastAction,
+        turnDeadline: deadline,
+      });
+    }
+  },
+});
 
 const COUNTDOWN_SECONDS = 5;
 
