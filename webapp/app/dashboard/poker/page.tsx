@@ -80,25 +80,19 @@ export default function PokerPage() {
     );
   }
 
-  if (isLoading) {
+  if (isLoading || !state) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
         <div className="w-8 h-8 rounded-full border-2 border-emerald-500 border-t-transparent animate-spin" />
         <p className="text-sm text-muted-foreground">Loading poker table...</p>
-      </div>
-    );
-  }
-
-  if (!state) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
-        <p className="text-muted-foreground">Game not found or has ended</p>
-        <Link
-          href="/dashboard"
-          className="text-sm text-primary hover:underline"
-        >
-          Back to Dashboard
-        </Link>
+        {state === null && (
+          <Link
+            href="/dashboard"
+            className="text-xs text-muted-foreground hover:text-foreground transition-colors mt-2"
+          >
+            Back to Dashboard
+          </Link>
+        )}
       </div>
     );
   }
