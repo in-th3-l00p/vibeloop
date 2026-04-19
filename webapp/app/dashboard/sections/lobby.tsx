@@ -42,6 +42,21 @@ export function Lobby() {
 
   const { user: currentUser } = useCurrentUser();
   const activeSession = useQuery(api.sessions.getMySession);
+  const pokerSummary = useQuery(
+    api.poker.queries.getPokerSummary,
+    activeSession?.session?.status === "playing" && activeSession.session.gameName === "Texas Hold'em"
+      ? { sessionId: activeSession.session._id }
+      : "skip",
+  );
+
+  // User is locked in game if they have an active playing session
+  // UNLESS the game allows leaving (poker: sitting out or eliminated)
+  const hasPlayingSession = activeSession?.session?.status === "playing";
+  const canLeaveGame =
+    activeSession?.session?.gameName === "Texas Hold'em" &&
+    pokerSummary &&
+    (pokerSummary.isSittingOut || pokerSummary.isEliminated);
+  const isLockedInGame = hasPlayingSession && !canLeaveGame;
   const { myLobby, lobbyId, isLoading, isHost, isSolo, createNew, rename, kick, transferHost } = useLobby();
   const { messages: liveMessages, send } = useLobbyChat(lobbyId);
   const [chatInput, setChatInput] = useState("");
@@ -175,8 +190,9 @@ export function Lobby() {
           <Dialog open={confirmNewOpen} onOpenChange={setConfirmNewOpen}>
             <DialogTrigger asChild>
               <button
-                disabled={isSolo}
+                disabled={isSolo || isLockedInGame}
                 className="cursor-pointer text-[10px] uppercase tracking-wider text-muted-foreground rounded-md px-2.5 py-1 bg-card ring-1 ring-border transition-all duration-300 hover:text-white flex items-center gap-1.5 disabled:opacity-30 disabled:cursor-not-allowed"
+                title={isLockedInGame ? "Sit out of the game first" : undefined}
               >
                 <HugeiconsIcon icon={Add01Icon} size={12} />
                 New

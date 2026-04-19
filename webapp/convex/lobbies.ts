@@ -73,6 +73,37 @@ async function getCurrentUser(ctx: QueryCtx) {
   return user;
 }
 
+/** Check if user is locked into an active game session (can't leave lobby) */
+async function hasActiveGameSession(ctx: QueryCtx, userId: Id<"users">) {
+  const memberships = await ctx.db
+    .query("sessionMembers")
+    .withIndex("by_userId", (q) => q.eq("userId", userId))
+    .take(10);
+
+  for (const m of memberships) {
+    const session = await ctx.db.get(m.sessionId);
+    if (!session || session.status === "finished") continue;
+    if (session.status === "waiting") return true;
+
+    if (session.status === "playing") {
+      // Check game-specific rules for whether the user can leave
+      if (session.gameName === "Texas Hold'em") {
+        const pokerState = await ctx.db
+          .query("pokerState")
+          .withIndex("by_sessionId", (q) => q.eq("sessionId", session._id))
+          .unique();
+        if (pokerState) {
+          const player = pokerState.players.find((p) => p.userId === userId);
+          // Can leave if sitting out or eliminated
+          if (player?.sittingOut || player?.eliminated) continue;
+        }
+      }
+      return true;
+    }
+  }
+  return false;
+}
+
 /** Shared helper: create a solo lobby for a user */
 async function createSoloLobby(ctx: MutationCtx, userId: Id<"users">, username: string) {
   const lobbyId = await ctx.db.insert("lobbies", {
@@ -155,6 +186,10 @@ export const create = mutation({
   handler: async (ctx, args) => {
     const user = await getCurrentUser(ctx);
 
+    if (await hasActiveGameSession(ctx, user._id)) {
+      throw new Error("Cannot create a new lobby while in an active game session");
+    }
+
     // Leave current lobby first
     await leaveCurrentLobby(ctx, user._id);
 
@@ -181,6 +216,11 @@ export const join = mutation({
   },
   handler: async (ctx, args) => {
     const user = await getCurrentUser(ctx);
+
+    if (await hasActiveGameSession(ctx, user._id)) {
+      throw new Error("Cannot join another lobby while in an active game session");
+    }
+
     const lobby = await ctx.db.get(args.lobbyId);
 
     if (!lobby) {
@@ -226,6 +266,10 @@ export const leave = mutation({
   },
   handler: async (ctx, args) => {
     const user = await getCurrentUser(ctx);
+
+    if (await hasActiveGameSession(ctx, user._id)) {
+      throw new Error("Cannot leave the lobby while in an active game session");
+    }
 
     const membership = await ctx.db
       .query("lobbyMembers")

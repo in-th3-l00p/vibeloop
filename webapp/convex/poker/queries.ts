@@ -85,6 +85,8 @@ export const getPokerSummary = query({
       phase: state.phase,
       playerCount: state.players.filter((p) => !p.eliminated).length,
       myChips: myPlayer?.chips ?? 0,
+      isSittingOut: myPlayer?.sittingOut ?? false,
+      isEliminated: myPlayer?.eliminated ?? false,
       isMyTurn:
         myPlayer !== undefined &&
         state.currentPlayerIndex === myPlayer.seatIndex &&
