@@ -78,7 +78,8 @@ async function hasActiveGameSession(ctx: QueryCtx, userId: Id<"users">) {
   const memberships = await ctx.db
     .query("sessionMembers")
     .withIndex("by_userId", (q) => q.eq("userId", userId))
-    .take(10);
+    .order("desc")
+    .take(50);
 
   for (const m of memberships) {
     const session = await ctx.db.get(m.sessionId);

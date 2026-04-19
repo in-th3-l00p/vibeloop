@@ -79,7 +79,8 @@ export const join = mutation({
     const existingSessions = await ctx.db
       .query("sessionMembers")
       .withIndex("by_userId", (q) => q.eq("userId", user._id))
-      .take(10);
+      .order("desc")
+      .take(50);
     for (const sm of existingSessions) {
       const existingSession = await ctx.db.get(sm.sessionId);
       if (
@@ -326,10 +327,12 @@ export const getMySession = query({
       return null;
     }
 
+    // Search from newest to oldest to find the active session faster
     const memberships = await ctx.db
       .query("sessionMembers")
       .withIndex("by_userId", (q) => q.eq("userId", user._id))
-      .take(10);
+      .order("desc")
+      .take(50);
 
     for (const m of memberships) {
       const session = await ctx.db.get(m.sessionId);
