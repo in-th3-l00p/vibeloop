@@ -3,6 +3,59 @@ import { mutation, query, QueryCtx, MutationCtx } from "./_generated/server";
 import { getUserCardTheme } from "./lib/getUserCardTheme";
 import { Id } from "./_generated/dataModel";
 
+/** Finish all active game sessions for a lobby and clean up poker state */
+async function cleanupActiveSessions(ctx: MutationCtx, lobbyId: Id<"lobbies">) {
+  const sessions = await ctx.db
+    .query("gameSessions")
+    .withIndex("by_lobbyId_and_status", (q) =>
+      q.eq("lobbyId", lobbyId).eq("status", "playing"),
+    )
+    .take(10);
+
+  for (const session of sessions) {
+    // Clean up poker state if exists
+    const pokerState = await ctx.db
+      .query("pokerState")
+      .withIndex("by_sessionId", (q) => q.eq("sessionId", session._id))
+      .unique();
+    if (pokerState) {
+      await ctx.db.delete(pokerState._id);
+    }
+
+    // Mark session as finished
+    await ctx.db.patch(session._id, {
+      status: "finished",
+      finishedAt: Date.now(),
+    });
+
+    // Mark all session members with draw result
+    const members = await ctx.db
+      .query("sessionMembers")
+      .withIndex("by_sessionId", (q) => q.eq("sessionId", session._id))
+      .take(20);
+    for (const m of members) {
+      if (!m.result) {
+        await ctx.db.patch(m._id, { result: "draw" });
+      }
+    }
+  }
+
+  // Also clean up waiting sessions
+  const waitingSessions = await ctx.db
+    .query("gameSessions")
+    .withIndex("by_lobbyId_and_status", (q) =>
+      q.eq("lobbyId", lobbyId).eq("status", "waiting"),
+    )
+    .take(10);
+
+  for (const session of waitingSessions) {
+    await ctx.db.patch(session._id, {
+      status: "finished",
+      finishedAt: Date.now(),
+    });
+  }
+}
+
 async function getCurrentUser(ctx: QueryCtx) {
   const identity = await ctx.auth.getUserIdentity();
   if (!identity) {
@@ -51,6 +104,9 @@ async function leaveCurrentLobby(ctx: MutationCtx, userId: Id<"users">) {
   await ctx.db.delete(membership._id);
 
   if (membership.role === "host") {
+    // Host leaving — close all active game sessions
+    await cleanupActiveSessions(ctx, lobbyId);
+
     // Find remaining members sorted by creation time (earliest joined)
     const remaining = await ctx.db
       .query("lobbyMembers")
@@ -184,6 +240,9 @@ export const leave = mutation({
     await ctx.db.delete(myMembership._id);
 
     if (myMembership.role === "host") {
+      // Host leaving — close all active game sessions
+      await cleanupActiveSessions(ctx, args.lobbyId);
+
       const remaining = await ctx.db
         .query("lobbyMembers")
         .withIndex("by_lobbyId", (q) => q.eq("lobbyId", args.lobbyId))

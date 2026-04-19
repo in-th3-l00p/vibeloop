@@ -11,6 +11,9 @@ interface PlayerSeatProps {
   folded: boolean;
   allIn: boolean;
   eliminated: boolean;
+  sittingOut?: boolean;
+  readyForNext?: boolean;
+  isHandComplete?: boolean;
   isDealer: boolean;
   isCurrentTurn: boolean;
   isSelf: boolean;
@@ -25,12 +28,15 @@ export function PlayerSeat({
   folded,
   allIn,
   eliminated,
+  sittingOut,
+  readyForNext,
+  isHandComplete,
   isDealer,
   isCurrentTurn,
   isSelf,
   accent,
 }: PlayerSeatProps) {
-  const opacity = folded || eliminated ? "opacity-40" : "opacity-100";
+  const opacity = folded || eliminated || sittingOut ? "opacity-40" : "opacity-100";
 
   return (
     <motion.div
@@ -64,9 +70,14 @@ export function PlayerSeat({
           backgroundColor: isSelf ? `${accent}15` : "var(--card)",
         }}
       >
-        {isDealer && (
+        {isDealer && !isHandComplete && (
           <span className="absolute -top-2 -right-2 w-5 h-5 rounded-full bg-yellow-500 text-black text-[9px] font-bold flex items-center justify-center shadow-md">
             D
+          </span>
+        )}
+        {isHandComplete && readyForNext && (
+          <span className="absolute -top-2 -right-2 w-5 h-5 rounded-full bg-emerald-500 text-white text-[9px] font-bold flex items-center justify-center shadow-md">
+            ✓
           </span>
         )}
         <p
@@ -80,11 +91,13 @@ export function PlayerSeat({
         <p className="text-[10px] text-muted-foreground">
           {eliminated
             ? "Out"
-            : folded
-              ? "Folded"
-              : allIn
-                ? "ALL IN"
-                : `${chips.toLocaleString()}`}
+            : sittingOut
+              ? "Sitting Out"
+              : folded
+                ? "Folded"
+                : allIn
+                  ? "ALL IN"
+                  : `${chips.toLocaleString()}`}
         </p>
       </div>
 

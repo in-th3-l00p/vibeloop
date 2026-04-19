@@ -24,6 +24,7 @@ import type * as poker_engine from "../poker/engine.js";
 import type * as poker_helpers from "../poker/helpers.js";
 import type * as poker_mutations from "../poker/mutations.js";
 import type * as poker_queries from "../poker/queries.js";
+import type * as poker_testHelper from "../poker/testHelper.js";
 import type * as presence from "../presence.js";
 import type * as seed from "../seed.js";
 import type * as sessions from "../sessions.js";
@@ -53,6 +54,7 @@ declare const fullApi: ApiFromModules<{
   "poker/helpers": typeof poker_helpers;
   "poker/mutations": typeof poker_mutations;
   "poker/queries": typeof poker_queries;
+  "poker/testHelper": typeof poker_testHelper;
   presence: typeof presence;
   seed: typeof seed;
   sessions: typeof sessions;

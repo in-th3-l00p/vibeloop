@@ -202,6 +202,8 @@ export default defineSchema({
         folded: v.boolean(),
         allIn: v.boolean(),
         eliminated: v.boolean(),
+        sittingOut: v.optional(v.boolean()),
+        readyForNext: v.optional(v.boolean()),
         seatIndex: v.number(),
       }),
     ),
@@ -219,7 +221,9 @@ export default defineSchema({
     bigBlind: v.number(),
     lastRaiseAmount: v.number(),
     minRaise: v.number(),
+    roundStartPlayerIndex: v.optional(v.number()),
     handNumber: v.number(),
+    countdownStartedAt: v.optional(v.number()),
     lastAction: v.optional(
       v.object({
         userId: v.id("users"),

@@ -16,6 +16,8 @@ export function usePoker(sessionId: Id<"gameSessions"> | null) {
   const actionMutation = useMutation(api.poker.mutations.playerAction);
   const nextHandMutation = useMutation(api.poker.mutations.startNextHand);
   const leaveMutation = useMutation(api.poker.mutations.leavePokerGame);
+  const rejoinMutation = useMutation(api.poker.mutations.rejoinPokerGame);
+  const toggleReadyMutation = useMutation(api.poker.mutations.toggleReady);
   const initMutation = useMutation(api.poker.mutations.initializePokerGame);
 
   const myPlayer = state?.players.find((p) => p.userId === user?._id);
@@ -40,6 +42,16 @@ export function usePoker(sessionId: Id<"gameSessions"> | null) {
       state.players.reduce((sum, p) => sum + p.currentBet, 0)
     : 0;
 
+  const readyCount = state
+    ? state.players.filter(
+        (p) => !p.eliminated && p.readyForNext,
+      ).length
+    : 0;
+
+  const activePlayers = state
+    ? state.players.filter((p) => !p.eliminated && !p.sittingOut)
+    : [];
+
   return {
     state,
     isLoading: state === undefined && sessionId !== null,
@@ -50,6 +62,10 @@ export function usePoker(sessionId: Id<"gameSessions"> | null) {
     minRaise,
     totalPot,
     highestBet,
+    readyCount,
+    activePlayerCount: activePlayers.length,
+    isReady: myPlayer?.readyForNext ?? false,
+    isSittingOut: myPlayer?.sittingOut ?? false,
     initialize: (sid: Id<"gameSessions">) =>
       initMutation({ sessionId: sid }),
     fold: () =>
@@ -65,5 +81,9 @@ export function usePoker(sessionId: Id<"gameSessions"> | null) {
       sessionId && nextHandMutation({ sessionId }),
     leave: () =>
       sessionId && leaveMutation({ sessionId }),
+    rejoin: () =>
+      sessionId && rejoinMutation({ sessionId }),
+    toggleReady: () =>
+      sessionId && toggleReadyMutation({ sessionId }),
   };
 }

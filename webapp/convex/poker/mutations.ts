@@ -1,6 +1,6 @@
 import { v } from "convex/values";
-import { mutation } from "../_generated/server";
-import { api } from "../_generated/api";
+import { mutation, internalMutation } from "../_generated/server";
+import { api, internal } from "../_generated/api";
 import { getCurrentUser, loadPokerState } from "./helpers";
 import {
   createDeck,
@@ -15,9 +15,142 @@ import {
   type PlayerState,
 } from "./engine";
 
+import { MutationCtx } from "../_generated/server";
+import { Doc, Id } from "../_generated/dataModel";
+
 const STARTING_CHIPS = 1000;
 const SMALL_BLIND = 10;
 const BIG_BLIND = 20;
+
+async function dealNextHand(
+  ctx: { db: MutationCtx["db"]; runMutation: MutationCtx["runMutation"] },
+  state: Doc<"pokerState">,
+  sessionId: Id<"gameSessions">,
+) {
+  const players = state.players.map((p) => ({ ...p }));
+
+  // Eliminate busted players
+  for (const p of players) {
+    if (p.chips <= 0 && !p.eliminated) {
+      p.eliminated = true;
+    }
+  }
+
+  // Sit out players who are not ready (and not already sitting out/eliminated)
+  for (const p of players) {
+    if (!p.eliminated && !p.sittingOut && !p.readyForNext) {
+      p.sittingOut = true;
+    }
+  }
+
+  const remaining = players.filter((p) => !p.eliminated && !p.sittingOut);
+
+  if (remaining.length < 2) {
+    const winner = remaining[0];
+    if (!winner) {
+      await ctx.db.delete(state._id);
+      return { gameOver: true };
+    }
+    const results = players.map((p) => ({
+      userId: p.userId as Id<"users">,
+      result: (p.userId === winner.userId ? "win" : "loss") as
+        | "win"
+        | "loss"
+        | "draw",
+    }));
+
+    await ctx.runMutation(api.sessions.finish, {
+      sessionId,
+      results,
+    });
+
+    await ctx.db.delete(state._id);
+    return { gameOver: true, winnerId: winner.userId };
+  }
+
+  // Reset player states first so active-player helpers work correctly
+  let deck = shuffleDeck(createDeck());
+  for (const p of players) {
+    p.holeCards = [];
+    p.currentBet = 0;
+    p.totalBetThisRound = 0;
+    p.folded = p.eliminated || !!p.sittingOut;
+    p.allIn = false;
+    p.readyForNext = false;
+  }
+
+  // Rotate dealer (skip eliminated and sitting-out)
+  let newDealerIndex = (state.dealerIndex + 1) % players.length;
+  while (players[newDealerIndex].folded) {
+    newDealerIndex = (newDealerIndex + 1) % players.length;
+  }
+
+  // Find SB and BB positions
+  let sbIndex: number;
+  let bbIndex: number;
+
+  if (remaining.length === 2) {
+    sbIndex = newDealerIndex;
+    bbIndex = getNextActivePlayerIndex(players, newDealerIndex);
+  } else {
+    sbIndex = getNextActivePlayerIndex(players, newDealerIndex);
+    bbIndex = getNextActivePlayerIndex(players, sbIndex);
+  }
+
+  // Deal hole cards
+  for (const p of players) {
+    if (p.eliminated || p.sittingOut) continue;
+    const { dealt, remaining: rem } = dealCards(deck, 2);
+    p.holeCards = dealt;
+    deck = rem;
+  }
+
+  // Post blinds
+  const sb = state.smallBlind;
+  const bb = state.bigBlind;
+
+  const sbPlayer = players[sbIndex];
+  const sbAmount = Math.min(sb, sbPlayer.chips);
+  sbPlayer.chips -= sbAmount;
+  sbPlayer.currentBet = sbAmount;
+  sbPlayer.totalBetThisRound = sbAmount;
+  if (sbPlayer.chips === 0) sbPlayer.allIn = true;
+
+  const bbPlayer = players[bbIndex];
+  const bbAmount = Math.min(bb, bbPlayer.chips);
+  bbPlayer.chips -= bbAmount;
+  bbPlayer.currentBet = bbAmount;
+  bbPlayer.totalBetThisRound = bbAmount;
+  if (bbPlayer.chips === 0) bbPlayer.allIn = true;
+
+  const firstToAct = getNextActivePlayerIndex(players, bbIndex);
+
+  await ctx.db.patch(state._id, {
+    phase: "preflop",
+    players,
+    communityCards: [],
+    deck,
+    pots: [
+      {
+        amount: sbAmount + bbAmount,
+        eligible: players
+          .filter((p) => !p.eliminated && !p.sittingOut)
+          .map((p) => p.userId),
+      },
+    ],
+    currentPlayerIndex: firstToAct,
+    dealerIndex: newDealerIndex,
+    lastRaiseAmount: bb,
+    minRaise: bb,
+    roundStartPlayerIndex: firstToAct,
+    handNumber: state.handNumber + 1,
+    countdownStartedAt: undefined,
+    lastAction: undefined,
+    winnersLastHand: undefined,
+  });
+
+  return { gameOver: false };
+}
 
 export const initializePokerGame = mutation({
   args: {
@@ -111,6 +244,7 @@ export const initializePokerGame = mutation({
       bigBlind: BIG_BLIND,
       lastRaiseAmount: BIG_BLIND,
       minRaise: BIG_BLIND,
+      roundStartPlayerIndex: firstToAct,
       handNumber: 1,
     });
   },
@@ -252,17 +386,31 @@ export const playerAction = mutation({
     const canAct = countPlayersCanAct(players);
 
     // Check if betting round is complete
+    // A raise always resets the round — others must respond
+    let newRoundStart = state.roundStartPlayerIndex ?? state.currentPlayerIndex;
+    if (args.action === "raise") {
+      newRoundStart = playerIdx;
+    }
+
+    // Round is complete when:
+    // 1. No one can act, OR
+    // 2. All bets are equal AND the next player is the round starter (full orbit)
+    const highBet = getHighestBet(players);
+    const allEqual = players
+      .filter((p) => !p.folded && !p.allIn && !p.eliminated)
+      .every((p) => p.currentBet === highBet);
     const bettingDone =
-      canAct === 0 || (canAct >= 1 && isBettingRoundComplete(players, playerIdx, args.action));
+      canAct === 0 ||
+      (allEqual && args.action !== "raise" && nextIdx === newRoundStart);
 
     if (bettingDone) {
-      // Advance phase
       await advancePhase(ctx, state._id, state, players, lastAction);
     } else {
       await ctx.db.patch(state._id, {
         players,
         currentPlayerIndex: nextIdx === -1 ? state.currentPlayerIndex : nextIdx,
         lastAction,
+        roundStartPlayerIndex: newRoundStart,
         lastRaiseAmount:
           args.action === "raise" ? (args.amount ?? state.lastRaiseAmount) : state.lastRaiseAmount,
         minRaise:
@@ -273,33 +421,6 @@ export const playerAction = mutation({
     }
   },
 });
-
-function isBettingRoundComplete(
-  players: PlayerState[],
-  actorIndex: number,
-  action: string,
-): boolean {
-  const activePlayers = players.filter(
-    (p) => !p.folded && !p.allIn && !p.eliminated,
-  );
-
-  if (activePlayers.length === 0) return true;
-  if (activePlayers.length === 1) {
-    const highestBet = getHighestBet(players);
-    return activePlayers[0].currentBet >= highestBet;
-  }
-
-  // All active players must have equal bets
-  const highestBet = getHighestBet(players);
-  const allEqual = activePlayers.every((p) => p.currentBet === highestBet);
-
-  if (!allEqual) return false;
-
-  // If the action was a raise, round is NOT complete (others need to respond)
-  if (action === "raise") return false;
-
-  return true;
-}
 
 function calculateTotalPot(players: PlayerState[]): number {
   return players.reduce((sum, p) => sum + p.totalBetThisRound, 0);
@@ -410,9 +531,87 @@ async function advancePhase(
       lastAction,
       lastRaiseAmount: state.bigBlind,
       minRaise: state.bigBlind,
+      roundStartPlayerIndex: firstToAct,
     });
   }
 }
+
+const COUNTDOWN_SECONDS = 5;
+
+export const toggleReady = mutation({
+  args: {
+    sessionId: v.id("gameSessions"),
+  },
+  handler: async (ctx, args) => {
+    const user = await getCurrentUser(ctx);
+    const state = await loadPokerState(ctx, args.sessionId);
+
+    if (state.phase !== "handComplete") {
+      throw new Error("Can only ready up between hands");
+    }
+
+    const playerIdx = state.players.findIndex(
+      (p) => p.userId === user._id,
+    );
+    if (playerIdx === -1) throw new Error("You are not in this game");
+
+    const player = state.players[playerIdx];
+    if (player.eliminated) throw new Error("You have been eliminated");
+
+    const players = state.players.map((p) => ({ ...p }));
+    players[playerIdx].readyForNext = !players[playerIdx].readyForNext;
+    // Readying up also clears sitting out
+    if (players[playerIdx].readyForNext && players[playerIdx].sittingOut) {
+      players[playerIdx].sittingOut = false;
+    }
+
+    // Check if all eligible players are now ready
+    const eligible = players.filter((p) => !p.eliminated);
+    const readyCount = eligible.filter((p) => p.readyForNext).length;
+    const allReady = readyCount >= 2 && readyCount === eligible.length;
+
+    if (allReady && !state.countdownStartedAt) {
+      // Start countdown — schedule auto-start
+      const now = Date.now();
+      await ctx.scheduler.runAfter(
+        COUNTDOWN_SECONDS * 1000,
+        internal.poker.mutations.autoStartNextHand,
+        { sessionId: args.sessionId, countdownStartedAt: now },
+      );
+      await ctx.db.patch(state._id, { players, countdownStartedAt: now });
+    } else if (!allReady && state.countdownStartedAt) {
+      // Someone un-readied — cancel countdown
+      await ctx.db.patch(state._id, { players, countdownStartedAt: undefined });
+    } else {
+      await ctx.db.patch(state._id, { players });
+    }
+  },
+});
+
+export const autoStartNextHand = internalMutation({
+  args: {
+    sessionId: v.id("gameSessions"),
+    countdownStartedAt: v.number(),
+  },
+  handler: async (ctx, args) => {
+    const state = await ctx.db
+      .query("pokerState")
+      .withIndex("by_sessionId", (q) => q.eq("sessionId", args.sessionId))
+      .unique();
+
+    // Bail if state is gone, hand already started, or countdown was cancelled
+    if (!state) return;
+    if (state.phase !== "handComplete") return;
+    if (state.countdownStartedAt !== args.countdownStartedAt) return;
+
+    // All eligible players should be ready (re-validate)
+    const eligible = state.players.filter((p) => !p.eliminated);
+    const readyCount = eligible.filter((p) => p.readyForNext).length;
+    if (readyCount < 2) return;
+
+    await dealNextHand(ctx, state, args.sessionId);
+  },
+});
 
 export const startNextHand = mutation({
   args: {
@@ -426,121 +625,15 @@ export const startNextHand = mutation({
       throw new Error("Current hand is not complete");
     }
 
-    // Verify caller is in the game
-    if (!state.players.some((p) => p.userId === user._id)) {
-      throw new Error("You are not in this game");
+    // Only the session creator (host) can start the next hand
+    const session = await ctx.db.get(args.sessionId);
+    if (!session) throw new Error("Session not found");
+    const lobby = await ctx.db.get(session.lobbyId);
+    if (session.createdBy !== user._id && lobby?.hostId !== user._id) {
+      throw new Error("Only the host can start the next hand");
     }
 
-    const players = state.players.map((p) => ({ ...p }));
-
-    // Eliminate busted players
-    for (const p of players) {
-      if (p.chips <= 0 && !p.eliminated) {
-        p.eliminated = true;
-      }
-    }
-
-    const remaining = players.filter((p) => !p.eliminated);
-
-    if (remaining.length < 2) {
-      // Game over — finish the session
-      const winner = remaining[0];
-      const results = players.map((p) => ({
-        userId: p.userId as any,
-        result: (p.userId === winner.userId ? "win" : "loss") as
-          | "win"
-          | "loss"
-          | "draw",
-      }));
-
-      await ctx.runMutation(api.sessions.finish, {
-        sessionId: args.sessionId,
-        results,
-      });
-
-      // Clean up poker state
-      await ctx.db.delete(state._id);
-      return { gameOver: true, winnerId: winner.userId };
-    }
-
-    // Rotate dealer
-    let newDealerIndex = (state.dealerIndex + 1) % players.length;
-    while (players[newDealerIndex].eliminated) {
-      newDealerIndex = (newDealerIndex + 1) % players.length;
-    }
-
-    // Find SB and BB positions
-    let sbIndex = newDealerIndex;
-    let bbIndex: number;
-
-    if (remaining.length === 2) {
-      // Heads-up: dealer is SB
-      sbIndex = newDealerIndex;
-      bbIndex = getNextActivePlayerIndex(players, newDealerIndex);
-    } else {
-      sbIndex = getNextActivePlayerIndex(players, newDealerIndex);
-      bbIndex = getNextActivePlayerIndex(players, sbIndex);
-    }
-
-    // Reset player states
-    let deck = shuffleDeck(createDeck());
-    for (const p of players) {
-      p.holeCards = [];
-      p.currentBet = 0;
-      p.totalBetThisRound = 0;
-      p.folded = p.eliminated;
-      p.allIn = false;
-    }
-
-    // Deal hole cards
-    for (const p of players) {
-      if (p.eliminated) continue;
-      const { dealt, remaining: rem } = dealCards(deck, 2);
-      p.holeCards = dealt;
-      deck = rem;
-    }
-
-    // Post blinds
-    const sb = state.smallBlind;
-    const bb = state.bigBlind;
-
-    const sbPlayer = players[sbIndex];
-    const sbAmount = Math.min(sb, sbPlayer.chips);
-    sbPlayer.chips -= sbAmount;
-    sbPlayer.currentBet = sbAmount;
-    sbPlayer.totalBetThisRound = sbAmount;
-    if (sbPlayer.chips === 0) sbPlayer.allIn = true;
-
-    const bbPlayer = players[bbIndex];
-    const bbAmount = Math.min(bb, bbPlayer.chips);
-    bbPlayer.chips -= bbAmount;
-    bbPlayer.currentBet = bbAmount;
-    bbPlayer.totalBetThisRound = bbAmount;
-    if (bbPlayer.chips === 0) bbPlayer.allIn = true;
-
-    const firstToAct = getNextActivePlayerIndex(players, bbIndex);
-
-    await ctx.db.patch(state._id, {
-      phase: "preflop",
-      players,
-      communityCards: [],
-      deck,
-      pots: [
-        {
-          amount: sbAmount + bbAmount,
-          eligible: players.filter((p) => !p.eliminated).map((p) => p.userId),
-        },
-      ],
-      currentPlayerIndex: firstToAct,
-      dealerIndex: newDealerIndex,
-      lastRaiseAmount: bb,
-      minRaise: bb,
-      handNumber: state.handNumber + 1,
-      lastAction: undefined,
-      winnersLastHand: undefined,
-    });
-
-    return { gameOver: false };
+    return await dealNextHand(ctx, state, args.sessionId);
   },
 });
 
@@ -562,8 +655,12 @@ export const leavePokerGame = mutation({
 
     if (player.eliminated) throw new Error("Already eliminated");
 
-    player.folded = true;
-    player.eliminated = true;
+    // Auto-fold the current hand if still active
+    if (!player.folded) {
+      player.folded = true;
+    }
+    // Mark as sitting out — they keep their chips but skip future hands
+    player.sittingOut = true;
 
     // If it was their turn, advance
     let currentPlayerIndex = state.currentPlayerIndex;
@@ -571,29 +668,44 @@ export const leavePokerGame = mutation({
       currentPlayerIndex = getNextActivePlayerIndex(players, playerIdx);
     }
 
-    const remaining = players.filter((p) => !p.eliminated);
+    // Check if only 1 non-folded player remains in the current hand
+    const activeInHand = players.filter((p) => !p.folded && !p.eliminated);
+    if (
+      activeInHand.length === 1 &&
+      state.phase !== "handComplete"
+    ) {
+      // Award pot to last player standing
+      const winner = activeInHand[0];
+      const totalPot = players.reduce((s, p) => s + p.totalBetThisRound, 0);
+      winner.chips += totalPot;
+      for (const p of players) {
+        p.currentBet = 0;
+        p.totalBetThisRound = 0;
+      }
 
-    if (remaining.length < 2) {
-      // Game over
-      const winner = remaining[0];
-      // Give them all chips from the leaver
-      winner.chips += player.chips;
-      player.chips = 0;
-
-      const results = players.map((p) => ({
-        userId: p.userId as any,
-        result: (p.userId === winner.userId ? "win" : "loss") as
-          | "win"
-          | "loss"
-          | "draw",
-      }));
-
-      await ctx.runMutation(api.sessions.finish, {
-        sessionId: args.sessionId,
-        results,
+      await ctx.db.patch(state._id, {
+        phase: "handComplete",
+        players,
+        pots: [{ amount: 0, eligible: [] }],
+        currentPlayerIndex: -1,
+        winnersLastHand: [
+          { userId: winner.userId, amount: totalPot, handName: "Last Standing" },
+        ],
       });
+      return;
+    }
 
-      await ctx.db.delete(state._id);
+    // Check if all remaining non-sitting-out players < 2 → game over
+    const activePlayers = players.filter(
+      (p) => !p.eliminated && !p.sittingOut,
+    );
+    if (activePlayers.length < 2) {
+      // Only 1 active player left, but sitting-out players still have chips
+      // Don't end the game — they can rejoin. Just update state.
+      await ctx.db.patch(state._id, {
+        players,
+        currentPlayerIndex: currentPlayerIndex === -1 ? 0 : currentPlayerIndex,
+      });
       return;
     }
 
@@ -601,5 +713,32 @@ export const leavePokerGame = mutation({
       players,
       currentPlayerIndex: currentPlayerIndex === -1 ? 0 : currentPlayerIndex,
     });
+  },
+});
+
+export const rejoinPokerGame = mutation({
+  args: {
+    sessionId: v.id("gameSessions"),
+  },
+  handler: async (ctx, args) => {
+    const user = await getCurrentUser(ctx);
+    const state = await loadPokerState(ctx, args.sessionId);
+
+    const playerIdx = state.players.findIndex(
+      (p) => p.userId === user._id,
+    );
+    if (playerIdx === -1) throw new Error("You are not in this game");
+
+    const players = state.players.map((p) => ({ ...p }));
+    const player = players[playerIdx];
+
+    if (player.eliminated) throw new Error("You have been eliminated");
+    if (!player.sittingOut) throw new Error("You are already in the game");
+    if (player.chips <= 0) throw new Error("No chips remaining");
+
+    // Mark as back in — they'll be dealt in on the next hand
+    player.sittingOut = false;
+
+    await ctx.db.patch(state._id, { players });
   },
 });

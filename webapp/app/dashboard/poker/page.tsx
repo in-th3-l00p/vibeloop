@@ -1,10 +1,13 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "motion/react";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { ArrowLeft02Icon } from "@hugeicons/core-free-icons";
 import Link from "next/link";
+import { useQuery } from "convex/react";
+import { api } from "@/convex/_generated/api";
 import { usePoker } from "@/hooks/use-poker";
 import { useCurrentUser } from "@/hooks/use-current-user";
 import { PokerCard } from "./components/poker-card";
@@ -34,7 +37,34 @@ export default function PokerPage() {
     raise,
     nextHand,
     leave,
+    rejoin,
+    toggleReady,
+    isSittingOut,
+    isReady,
+    readyCount,
   } = usePoker(sessionId);
+
+  const mySession = useQuery(api.sessions.getMySession);
+  const isHost = mySession?.session?.createdBy === currentUser?._id;
+
+  // Countdown timer
+  const countdownStartedAt = state?.countdownStartedAt;
+  const [countdown, setCountdown] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (!countdownStartedAt) {
+      setCountdown(null);
+      return;
+    }
+    const tick = () => {
+      const elapsed = (Date.now() - countdownStartedAt) / 1000;
+      const remaining = Math.max(0, 5 - elapsed);
+      setCountdown(Math.ceil(remaining));
+    };
+    tick();
+    const interval = setInterval(tick, 100);
+    return () => clearInterval(interval);
+  }, [countdownStartedAt]);
 
   if (!sessionId) {
     return (
@@ -74,6 +104,9 @@ export default function PokerPage() {
   }
 
   const activePlayers = state.players.filter((p) => !p.eliminated);
+  const playablePlayers = activePlayers.filter((p) => !p.sittingOut);
+  const canStartNextHand = playablePlayers.length >= 2;
+  const isHandInProgress = state.phase !== "handComplete" && state.phase !== "showdown";
   const maxRaise = myPlayer ? myPlayer.chips - callAmount : 0;
 
   const phaseLabel: Record<string, string> = {
@@ -86,7 +119,7 @@ export default function PokerPage() {
   };
 
   return (
-    <div className="flex flex-col min-h-[calc(100vh-4rem)] max-w-2xl mx-auto px-4 py-6 gap-4">
+    <div className="flex flex-col min-h-[calc(100vh-4rem)] max-w-6xl w-full mx-auto px-6 py-6 gap-4">
       {/* Top bar */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
@@ -120,22 +153,54 @@ export default function PokerPage() {
               </p>
             </div>
           )}
-          <button
-            onClick={async () => {
-              await leave();
-              router.push("/dashboard");
-            }}
-            className="cursor-pointer text-[10px] uppercase tracking-wider text-red-400 rounded-lg px-3 py-2 bg-red-500/10 ring-1 ring-red-500/20 transition-all hover:bg-red-500/20"
-          >
-            Leave
-          </button>
+          {isSittingOut ? (
+            <button
+              onClick={async () => {
+                await rejoin();
+              }}
+              className="cursor-pointer text-[10px] uppercase tracking-wider text-emerald-400 rounded-lg px-3 py-2 bg-emerald-500/10 ring-1 ring-emerald-500/30 transition-all hover:bg-emerald-500/20"
+            >
+              Rejoin
+            </button>
+          ) : (
+            <button
+              disabled={isHandInProgress}
+              onClick={async () => {
+                await leave();
+              }}
+              className="cursor-pointer text-[10px] uppercase tracking-wider text-red-400 rounded-lg px-3 py-2 bg-red-500/10 ring-1 ring-red-500/20 transition-all hover:bg-red-500/20 disabled:opacity-30 disabled:cursor-not-allowed"
+              title={isHandInProgress ? "Wait for the hand to finish" : undefined}
+            >
+              Sit Out
+            </button>
+          )}
         </div>
       </div>
+
+      {/* Sitting out banner */}
+      {isSittingOut && (
+        <motion.div
+          initial={{ opacity: 0, y: -8 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="rounded-xl bg-amber-500/10 ring-1 ring-amber-500/20 px-4 py-3 flex items-center justify-between max-w-4xl w-full mx-auto"
+        >
+          <div className="flex items-center gap-2">
+            <span className="text-amber-400 text-sm">You are sitting out</span>
+            <span className="text-[10px] text-muted-foreground">Your hand is folded. You&apos;ll be dealt back in when you rejoin.</span>
+          </div>
+          <button
+            onClick={rejoin}
+            className="cursor-pointer text-[10px] uppercase tracking-wider text-emerald-400 rounded-lg px-3 py-2 bg-emerald-500/10 ring-1 ring-emerald-500/30 transition-all hover:bg-emerald-500/20"
+          >
+            Rejoin Game
+          </button>
+        </motion.div>
+      )}
 
       {/* Table */}
       <div className="flex-1 flex flex-col items-center justify-center gap-6">
         {/* Players top row */}
-        <div className="flex items-end justify-center gap-6 flex-wrap">
+        <div className="flex items-end justify-center gap-10 flex-wrap">
           {activePlayers
             .filter((_, i) => i >= Math.ceil(activePlayers.length / 2))
             .map((p) => (
@@ -148,6 +213,9 @@ export default function PokerPage() {
                 folded={p.folded}
                 allIn={p.allIn}
                 eliminated={p.eliminated}
+                sittingOut={p.sittingOut}
+                readyForNext={p.readyForNext}
+                isHandComplete={state.phase === "handComplete"}
                 isDealer={p.seatIndex === state.dealerIndex}
                 isCurrentTurn={state.currentPlayerIndex === p.seatIndex}
                 isSelf={p.userId === currentUser?._id}
@@ -157,12 +225,12 @@ export default function PokerPage() {
         </div>
 
         {/* Table felt */}
-        <div className="relative w-full max-w-lg rounded-3xl bg-gradient-to-br from-emerald-900/80 to-emerald-950/80 ring-2 ring-emerald-700/30 shadow-[0_0_40px_rgba(16,185,129,0.1)] px-8 py-10 flex flex-col items-center gap-4">
+        <div className="relative w-full max-w-4xl rounded-3xl bg-gradient-to-br from-emerald-900/80 to-emerald-950/80 ring-2 ring-emerald-700/30 shadow-[0_0_40px_rgba(16,185,129,0.1)] px-12 py-14 flex flex-col items-center gap-5">
           {/* Pot */}
           <PotDisplay totalPot={totalPot} pots={state.pots} />
 
           {/* Community cards */}
-          <div className="flex items-center gap-2 min-h-[80px]">
+          <div className="flex items-center gap-3 min-h-[80px]">
             <AnimatePresence>
               {state.communityCards.map((card, i) => (
                 <PokerCard key={`${card}-${i}`} card={card} size="md" delay={i * 0.15} />
@@ -196,7 +264,7 @@ export default function PokerPage() {
         </div>
 
         {/* Players bottom row */}
-        <div className="flex items-start justify-center gap-6 flex-wrap">
+        <div className="flex items-start justify-center gap-10 flex-wrap">
           {activePlayers
             .filter((_, i) => i < Math.ceil(activePlayers.length / 2))
             .map((p) => (
@@ -209,6 +277,9 @@ export default function PokerPage() {
                 folded={p.folded}
                 allIn={p.allIn}
                 eliminated={p.eliminated}
+                sittingOut={p.sittingOut}
+                readyForNext={p.readyForNext}
+                isHandComplete={state.phase === "handComplete"}
                 isDealer={p.seatIndex === state.dealerIndex}
                 isCurrentTurn={state.currentPlayerIndex === p.seatIndex}
                 isSelf={p.userId === currentUser?._id}
@@ -218,40 +289,86 @@ export default function PokerPage() {
         </div>
       </div>
 
-      {/* Winners overlay */}
+      {/* Hand complete: results + ready system */}
       <AnimatePresence>
         {state.phase === "handComplete" && state.winnersLastHand && (
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0 }}
-            className="bg-card ring-1 ring-border rounded-xl p-4 space-y-3"
+            className="bg-card ring-1 ring-border rounded-xl px-4 py-3 max-w-4xl w-full mx-auto"
           >
-            <p className="text-xs uppercase tracking-wider text-muted-foreground text-center">
-              Hand Result
-            </p>
-            <div className="flex flex-wrap justify-center gap-3">
-              {state.winnersLastHand.map((w, i) => (
-                <div
-                  key={i}
-                  className="bg-emerald-500/10 ring-1 ring-emerald-500/30 rounded-lg px-4 py-2 text-center"
-                >
-                  <p className="text-sm font-bold text-emerald-400">
-                    +{w.amount}
-                  </p>
-                  <p className="text-[10px] text-muted-foreground">
-                    {w.handName}
-                  </p>
-                </div>
-              ))}
-            </div>
-            <div className="flex justify-center">
-              <button
-                onClick={nextHand}
-                className="cursor-pointer rounded-xl bg-emerald-500/10 ring-1 ring-emerald-500/30 text-emerald-400 px-6 py-2.5 text-sm font-medium transition-all hover:bg-emerald-500/20"
-              >
-                Next Hand
-              </button>
+            {/* Result + Ready in a compact row layout */}
+            <div className="flex items-center justify-between gap-4">
+              {/* Left: hand result */}
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] uppercase tracking-wider text-muted-foreground">Result</span>
+                {state.winnersLastHand.map((w, i) => (
+                  <span key={i} className="text-sm font-bold text-emerald-400">
+                    +{w.amount}{" "}
+                    <span className="text-[10px] font-normal text-muted-foreground">{w.handName}</span>
+                  </span>
+                ))}
+              </div>
+
+              {/* Center: countdown or ready dots */}
+              <div className="flex items-center gap-2">
+                {countdown !== null && countdown > 0 ? (
+                  <motion.div
+                    initial={{ opacity: 0, scale: 0.9 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    className="flex items-center gap-2"
+                  >
+                    <span className="text-xl font-bold font-mono text-emerald-400">{countdown}</span>
+                    <span className="text-[9px] text-muted-foreground uppercase tracking-wider">sec</span>
+                  </motion.div>
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <span className="text-[9px] uppercase tracking-wider text-muted-foreground">
+                      {readyCount}/{activePlayers.filter((p) => !p.eliminated).length}
+                    </span>
+                    <div className="flex gap-1">
+                      {activePlayers
+                        .filter((p) => !p.eliminated)
+                        .map((p) => (
+                          <div
+                            key={p.userId}
+                            className={`w-2 h-2 rounded-full transition-colors ${
+                              p.readyForNext
+                                ? "bg-emerald-400 shadow-[0_0_4px_rgba(52,211,153,0.5)]"
+                                : "bg-muted-foreground/30"
+                            }`}
+                          />
+                        ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Right: action buttons */}
+              <div className="flex items-center gap-2">
+                {myPlayer && !myPlayer.eliminated && (
+                  <button
+                    onClick={toggleReady}
+                    className={`cursor-pointer rounded-lg px-4 py-1.5 text-xs font-medium transition-all ${
+                      isReady
+                        ? "bg-emerald-500/20 ring-1 ring-emerald-500/40 text-emerald-400"
+                        : "bg-card ring-1 ring-border text-muted-foreground hover:text-foreground hover:ring-white/20"
+                    }`}
+                  >
+                    {isReady ? "Ready ✓" : "Ready Up"}
+                  </button>
+                )}
+                {isHost && (
+                  <button
+                    disabled={readyCount < 2}
+                    onClick={nextHand}
+                    className="cursor-pointer rounded-lg bg-emerald-500/10 ring-1 ring-emerald-500/30 text-emerald-400 px-4 py-1.5 text-xs font-medium transition-all hover:bg-emerald-500/20 disabled:opacity-30 disabled:cursor-not-allowed"
+                  >
+                    {countdown ? "Skip" : readyCount < 2 ? "Start (2+)" : "Start"}
+                  </button>
+                )}
+              </div>
             </div>
           </motion.div>
         )}
