@@ -3,6 +3,7 @@ import { mutation, query, QueryCtx, MutationCtx } from "./_generated/server";
 import { getUserCardTheme } from "./lib/getUserCardTheme";
 import { Id } from "./_generated/dataModel";
 import { emitToSessionMembers } from "./events";
+import { getNextActivePlayerIndex } from "./poker/engine";
 
 /** Finish all active game sessions for a lobby and clean up poker state */
 async function cleanupActiveSessions(ctx: MutationCtx, lobbyId: Id<"lobbies">) {
@@ -112,6 +113,96 @@ async function hasActiveGameSession(ctx: QueryCtx, userId: Id<"users">) {
   return false;
 }
 
+/** Remove a user from all active game sessions in a lobby */
+async function removeUserFromActiveSessions(ctx: MutationCtx, userId: Id<"users">, lobbyId: Id<"lobbies">) {
+  const sessions = await ctx.db
+    .query("gameSessions")
+    .withIndex("by_lobbyId_and_status", (q) =>
+      q.eq("lobbyId", lobbyId).eq("status", "playing"),
+    )
+    .take(10);
+
+  for (const session of sessions) {
+    // For poker: sit out the player and fold their hand
+    if (session.gameName === "Texas Hold'em") {
+      const pokerState = await ctx.db
+        .query("pokerState")
+        .withIndex("by_sessionId", (q) => q.eq("sessionId", session._id))
+        .unique();
+
+      if (pokerState) {
+        const playerIdx = pokerState.players.findIndex((p) => p.userId === userId);
+        if (playerIdx !== -1 && !pokerState.players[playerIdx].eliminated) {
+          const players = pokerState.players.map((p) => ({ ...p }));
+          const player = players[playerIdx];
+          if (!player.folded) player.folded = true;
+          player.sittingOut = true;
+
+          let currentPlayerIndex = pokerState.currentPlayerIndex;
+
+          // If it was their turn, advance
+          if (currentPlayerIndex === playerIdx) {
+            currentPlayerIndex = getNextActivePlayerIndex(players, playerIdx);
+          }
+
+          // Check if only 1 non-folded player remains
+          const activeInHand = players.filter((p) => !p.folded && !p.eliminated);
+          if (activeInHand.length === 1 && pokerState.phase !== "handComplete") {
+            const winner = activeInHand[0];
+            const totalPot = players.reduce((s, p) => s + p.totalBetThisRound, 0);
+            winner.chips += totalPot;
+            for (const p of players) { p.currentBet = 0; p.totalBetThisRound = 0; }
+            await ctx.db.patch(pokerState._id, {
+              phase: "handComplete",
+              players,
+              pots: [{ amount: 0, eligible: [] }],
+              currentPlayerIndex: -1,
+              turnDeadline: undefined,
+              winnersLastHand: [
+                { userId: winner.userId, amount: totalPot, handName: "Last Standing" },
+              ],
+            });
+          } else {
+            await ctx.db.patch(pokerState._id, {
+              players,
+              currentPlayerIndex: currentPlayerIndex === -1 ? 0 : currentPlayerIndex,
+            });
+          }
+        }
+      }
+    }
+
+    // Remove session membership
+    const memberDocs = await ctx.db
+      .query("sessionMembers")
+      .withIndex("by_sessionId", (q) => q.eq("sessionId", session._id))
+      .take(20);
+    const myMember = memberDocs.find((m) => m.userId === userId);
+    if (myMember) {
+      await ctx.db.delete(myMember._id);
+    }
+  }
+
+  // Also clean up waiting sessions
+  const waitingSessions = await ctx.db
+    .query("gameSessions")
+    .withIndex("by_lobbyId_and_status", (q) =>
+      q.eq("lobbyId", lobbyId).eq("status", "waiting"),
+    )
+    .take(10);
+
+  for (const session of waitingSessions) {
+    const memberDocs = await ctx.db
+      .query("sessionMembers")
+      .withIndex("by_sessionId", (q) => q.eq("sessionId", session._id))
+      .take(20);
+    const myMember = memberDocs.find((m) => m.userId === userId);
+    if (myMember) {
+      await ctx.db.delete(myMember._id);
+    }
+  }
+}
+
 /** Shared helper: create a solo lobby for a user */
 async function createSoloLobby(ctx: MutationCtx, userId: Id<"users">, username: string) {
   const lobbyId = await ctx.db.insert("lobbies", {
@@ -139,6 +230,9 @@ async function leaveCurrentLobby(ctx: MutationCtx, userId: Id<"users">) {
 
   const membership = memberships[0];
   const lobbyId = membership.lobbyId;
+
+  // Remove user from any active game sessions in this lobby
+  await removeUserFromActiveSessions(ctx, userId, lobbyId);
 
   await ctx.db.delete(membership._id);
 
@@ -289,10 +383,13 @@ export const leave = mutation({
       throw new Error("Not in this lobby");
     }
 
+    // Remove user from any active game sessions
+    await removeUserFromActiveSessions(ctx, user._id, args.lobbyId);
+
     await ctx.db.delete(myMembership._id);
 
     if (myMembership.role === "host") {
-      // Host leaving — close all active game sessions
+      // Host leaving — close all active game sessions for everyone
       await cleanupActiveSessions(ctx, args.lobbyId);
 
       const remaining = await ctx.db
@@ -407,6 +504,9 @@ export const kick = mutation({
     if (!targetMembership) {
       throw new Error("User is not in this lobby");
     }
+
+    // Remove kicked user from any active game sessions
+    await removeUserFromActiveSessions(ctx, args.targetUserId, args.lobbyId);
 
     await ctx.db.delete(targetMembership._id);
 
