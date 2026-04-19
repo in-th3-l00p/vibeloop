@@ -25,6 +25,15 @@ export default defineConfig({
           environment: "jsdom",
         },
       },
+      {
+        extends: true,
+        test: {
+          name: "components",
+          include: ["app/**/*.test.tsx"],
+          environment: "jsdom",
+          setupFiles: ["./vitest.setup.ts"],
+        },
+      },
     ],
   },
 });
