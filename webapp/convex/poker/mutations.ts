@@ -742,3 +742,71 @@ export const rejoinPokerGame = mutation({
     await ctx.db.patch(state._id, { players });
   },
 });
+
+export const closePokerGame = mutation({
+  args: {
+    sessionId: v.id("gameSessions"),
+  },
+  handler: async (ctx, args) => {
+    const user = await getCurrentUser(ctx);
+    const session = await ctx.db.get(args.sessionId);
+    if (!session) throw new Error("Session not found");
+
+    // Only host can close
+    const lobby = await ctx.db.get(session.lobbyId);
+    if (session.createdBy !== user._id && lobby?.hostId !== user._id) {
+      throw new Error("Only the host can close the game");
+    }
+
+    if (session.status !== "playing") {
+      throw new Error("Session is not active");
+    }
+
+    // Check no hand is in progress
+    const state = await ctx.db
+      .query("pokerState")
+      .withIndex("by_sessionId", (q) => q.eq("sessionId", args.sessionId))
+      .unique();
+
+    if (state && state.phase !== "handComplete") {
+      throw new Error("Cannot close while a hand is in progress");
+    }
+
+    // Determine winner (most chips)
+    const results = session.gameName === "Texas Hold'em" && state
+      ? (() => {
+          const sorted = [...state.players].sort((a, b) => b.chips - a.chips);
+          const topChips = sorted[0]?.chips ?? 0;
+          return state.players.map((p) => ({
+            userId: p.userId,
+            result: (p.chips === topChips ? "win" : "loss") as "win" | "loss" | "draw",
+          }));
+        })()
+      : [];
+
+    // Clean up poker state
+    if (state) {
+      await ctx.db.delete(state._id);
+    }
+
+    // Finish the session
+    await ctx.db.patch(args.sessionId, {
+      status: "finished" as const,
+      finishedAt: Date.now(),
+    });
+
+    // Update session member results
+    if (results.length > 0) {
+      const members = await ctx.db
+        .query("sessionMembers")
+        .withIndex("by_sessionId", (q) => q.eq("sessionId", args.sessionId))
+        .take(20);
+      for (const m of members) {
+        const r = results.find((r) => r.userId === m.userId);
+        if (r) {
+          await ctx.db.patch(m._id, { result: r.result });
+        }
+      }
+    }
+  },
+});

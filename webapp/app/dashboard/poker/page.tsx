@@ -39,6 +39,7 @@ export default function PokerPage() {
     leave,
     rejoin,
     toggleReady,
+    closeGame,
     isSittingOut,
     isReady,
     readyCount,
@@ -46,6 +47,17 @@ export default function PokerPage() {
 
   const mySession = useQuery(api.sessions.getMySession);
   const isHost = mySession?.session?.createdBy === currentUser?._id;
+
+  // Redirect to dashboard if game session ends (state goes null after being loaded)
+  const [hadState, setHadState] = useState(false);
+  useEffect(() => {
+    if (state) setHadState(true);
+  }, [state]);
+  useEffect(() => {
+    if (hadState && state === null) {
+      router.push("/dashboard");
+    }
+  }, [hadState, state, router]);
 
   // Countdown timer
   const countdownStartedAt = state?.countdownStartedAt;
@@ -166,6 +178,17 @@ export default function PokerPage() {
               title={isHandInProgress ? "Wait for the hand to finish" : undefined}
             >
               Sit Out
+            </button>
+          )}
+          {isHost && !isHandInProgress && (
+            <button
+              onClick={async () => {
+                await closeGame();
+                router.push("/dashboard");
+              }}
+              className="cursor-pointer text-[10px] uppercase tracking-wider text-red-400 rounded-lg px-3 py-2 bg-red-500/10 ring-1 ring-red-500/20 transition-all hover:bg-red-500/20"
+            >
+              End Game
             </button>
           )}
         </div>

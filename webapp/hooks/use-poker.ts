@@ -18,6 +18,7 @@ export function usePoker(sessionId: Id<"gameSessions"> | null) {
   const leaveMutation = useMutation(api.poker.mutations.leavePokerGame);
   const rejoinMutation = useMutation(api.poker.mutations.rejoinPokerGame);
   const toggleReadyMutation = useMutation(api.poker.mutations.toggleReady);
+  const closeGameMutation = useMutation(api.poker.mutations.closePokerGame);
   const initMutation = useMutation(api.poker.mutations.initializePokerGame);
 
   const myPlayer = state?.players.find((p) => p.userId === user?._id);
@@ -85,5 +86,7 @@ export function usePoker(sessionId: Id<"gameSessions"> | null) {
       sessionId && rejoinMutation({ sessionId }),
     toggleReady: () =>
       sessionId && toggleReadyMutation({ sessionId }),
+    closeGame: () =>
+      sessionId && closeGameMutation({ sessionId }),
   };
 }

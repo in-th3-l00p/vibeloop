@@ -9,7 +9,7 @@ import { Sheet, SheetTrigger, SheetContent, SheetHeader, SheetTitle } from "@/co
 import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { ContextMenu, ContextMenuTrigger, ContextMenuContent, ContextMenuItem, ContextMenuSeparator } from "@/components/ui/context-menu";
 import { useRouter } from "next/navigation";
-import { useQuery } from "convex/react";
+import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { useDashboard } from "../dashboard-context";
 import { useLobby } from "@/hooks/use-lobby";
@@ -49,15 +49,21 @@ export function Lobby() {
       : "skip",
   );
 
-  // User is locked in game if they have an active playing session
-  // UNLESS the game allows leaving (poker: sitting out or eliminated)
+  const closePokerGame = useMutation(api.poker.mutations.closePokerGame);
+  const { myLobby, lobbyId, isLoading, isHost, isSolo, createNew, rename, kick, transferHost } = useLobby();
+
   const hasPlayingSession = activeSession?.session?.status === "playing";
   const canLeaveGame =
     activeSession?.session?.gameName === "Texas Hold'em" &&
     pokerSummary &&
     (pokerSummary.isSittingOut || pokerSummary.isEliminated);
   const isLockedInGame = hasPlayingSession && !canLeaveGame;
-  const { myLobby, lobbyId, isLoading, isHost, isSolo, createNew, rename, kick, transferHost } = useLobby();
+  const canHostEndGame =
+    isHost &&
+    hasPlayingSession &&
+    activeSession?.session?.gameName === "Texas Hold'em" &&
+    pokerSummary &&
+    pokerSummary.phase === "handComplete";
   const { messages: liveMessages, send } = useLobbyChat(lobbyId);
   const [chatInput, setChatInput] = useState("");
 
@@ -250,16 +256,28 @@ export function Lobby() {
               </p>
             </div>
           </div>
-          <button
-            onClick={() =>
-              router.push(
-                `/dashboard/poker?session=${activeSession.session._id}`,
-              )
-            }
-            className="cursor-pointer text-[10px] uppercase tracking-wider text-emerald-400 rounded-lg px-3 py-2 bg-emerald-500/10 ring-1 ring-emerald-500/30 transition-all hover:bg-emerald-500/20"
-          >
-            Rejoin Game
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() =>
+                router.push(
+                  `/dashboard/poker?session=${activeSession.session._id}`,
+                )
+              }
+              className="cursor-pointer text-[10px] uppercase tracking-wider text-emerald-400 rounded-lg px-3 py-2 bg-emerald-500/10 ring-1 ring-emerald-500/30 transition-all hover:bg-emerald-500/20"
+            >
+              Rejoin Game
+            </button>
+            {canHostEndGame && (
+              <button
+                onClick={() =>
+                  closePokerGame({ sessionId: activeSession.session._id })
+                }
+                className="cursor-pointer text-[10px] uppercase tracking-wider text-red-400 rounded-lg px-3 py-2 bg-red-500/10 ring-1 ring-red-500/20 transition-all hover:bg-red-500/20"
+              >
+                End Game
+              </button>
+            )}
+          </div>
         </motion.div>
       )}
 
