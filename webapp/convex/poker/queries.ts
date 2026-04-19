@@ -61,6 +61,7 @@ export const getPokerState = query({
       handNumber: state.handNumber,
       countdownStartedAt: state.countdownStartedAt,
       turnDeadline: state.turnDeadline,
+      actionLog: state.actionLog ?? [],
       lastAction: state.lastAction,
       winnersLastHand: state.winnersLastHand,
       // deck is NEVER returned

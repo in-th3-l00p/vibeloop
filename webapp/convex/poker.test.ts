@@ -389,4 +389,122 @@ describe("poker engine", () => {
       expect(totalChips).toBe(2000);
     });
   });
+
+  it("action log records actions via playerAction", async () => {
+    const t = convexTest(schema, modules);
+    const { asAlice, asBob, sessionId } = await setupPokerGame(t);
+
+    // Use authenticated playerAction — Alice is seat 0 (first player found by userId)
+    // Preflop: Alice (seat 0) folds
+    await asAlice.mutation(api.poker.mutations.playerAction, {
+      sessionId, action: "fold",
+    });
+
+    await t.run(async (ctx) => {
+      const state = await ctx.db
+        .query("pokerState")
+        .withIndex("by_sessionId", (q) => q.eq("sessionId", sessionId))
+        .unique();
+      expect(state!.actionLog).toBeDefined();
+      expect(state!.actionLog!.length).toBeGreaterThan(0);
+      expect(state!.actionLog!.some((l: string) => l.includes("folded"))).toBe(true);
+    });
+  });
+
+  it("all-in correctly handles side pots with chip conservation", async () => {
+    const t = convexTest(schema, modules);
+    const { sessionId } = await setupPokerGame(t);
+
+    // Seat 0 goes all-in preflop
+    await t.mutation(internal.poker.testHelper.actAsSeat, {
+      sessionId, seatIndex: 0, action: "raise", amount: 980,
+    });
+    // Seat 1 calls the all-in
+    await t.mutation(internal.poker.testHelper.actAsSeat, {
+      sessionId, seatIndex: 1, action: "call",
+    });
+
+    // Should auto-advance to handComplete (both all-in)
+    await t.run(async (ctx) => {
+      const state = await ctx.db
+        .query("pokerState")
+        .withIndex("by_sessionId", (q) => q.eq("sessionId", sessionId))
+        .unique();
+      expect(state!.phase).toBe("handComplete");
+      expect(state!.communityCards.length).toBe(5);
+      const totalChips = state!.players.reduce((s, p) => s + p.chips, 0);
+      expect(totalChips).toBe(2000);
+    });
+  });
+
+  it("3-player game works correctly", async () => {
+    const t = convexTest(schema, modules);
+    const asAlice = await createUser(t, "Alice");
+    const asBob = await createUser(t, "Bob");
+    const asCharlie = await createUser(t, "Charlie");
+
+    const lobbyId = await asAlice.mutation(api.lobbies.create, {
+      name: "3P Lobby",
+      maxPlayers: 8,
+    });
+    await asBob.mutation(api.lobbies.join, { lobbyId });
+    await asCharlie.mutation(api.lobbies.join, { lobbyId });
+
+    const sessionId = await asAlice.mutation(api.sessions.createAndStartForLobby, {
+      lobbyId,
+      gameName: "Texas Hold'em",
+      maxPlayers: 8,
+    });
+
+    await asAlice.mutation(api.poker.mutations.initializePokerGame, { sessionId });
+
+    await t.run(async (ctx) => {
+      const state = await ctx.db
+        .query("pokerState")
+        .withIndex("by_sessionId", (q) => q.eq("sessionId", sessionId))
+        .unique();
+      expect(state!.players).toHaveLength(3);
+      expect(state!.phase).toBe("preflop");
+
+      // Verify blinds: SB=10, BB=20, total chips = 3000 - 30
+      const totalChips = state!.players.reduce((s, p) => s + p.chips, 0);
+      expect(totalChips).toBe(3000 - 30);
+    });
+  });
+
+  it("ready system works correctly", async () => {
+    const t = convexTest(schema, modules);
+    const { asAlice, asBob, sessionId } = await setupPokerGame(t);
+
+    // Play to handComplete
+    await t.mutation(internal.poker.testHelper.actAsSeat, {
+      sessionId, seatIndex: 0, action: "fold",
+    });
+
+    // Toggle ready for both players
+    await asAlice.mutation(api.poker.mutations.toggleReady, { sessionId });
+    await asBob.mutation(api.poker.mutations.toggleReady, { sessionId });
+
+    await t.run(async (ctx) => {
+      const state = await ctx.db
+        .query("pokerState")
+        .withIndex("by_sessionId", (q) => q.eq("sessionId", sessionId))
+        .unique();
+      const readyCount = state!.players.filter((p) => p.readyForNext).length;
+      expect(readyCount).toBe(2);
+      // Countdown should have started
+      expect(state!.countdownStartedAt).toBeDefined();
+    });
+
+    // Un-ready cancels countdown
+    await asAlice.mutation(api.poker.mutations.toggleReady, { sessionId });
+
+    await t.run(async (ctx) => {
+      const state = await ctx.db
+        .query("pokerState")
+        .withIndex("by_sessionId", (q) => q.eq("sessionId", sessionId))
+        .unique();
+      expect(state!.countdownStartedAt).toBeUndefined();
+    });
+  });
 });

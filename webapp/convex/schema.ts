@@ -231,6 +231,7 @@ export default defineSchema({
     handNumber: v.number(),
     countdownStartedAt: v.optional(v.number()),
     turnDeadline: v.optional(v.number()),
+    actionLog: v.optional(v.array(v.string())),
     lastAction: v.optional(
       v.object({
         userId: v.id("users"),

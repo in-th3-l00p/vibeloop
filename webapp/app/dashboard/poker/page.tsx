@@ -4,13 +4,14 @@ import { useState, useEffect, useRef } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "motion/react";
 import { HugeiconsIcon } from "@hugeicons/react";
-import { ArrowLeft02Icon } from "@hugeicons/core-free-icons";
+import { ArrowLeft02Icon, BubbleChatIcon } from "@hugeicons/core-free-icons";
 import Link from "next/link";
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { usePoker } from "@/hooks/use-poker";
 import { useCurrentUser } from "@/hooks/use-current-user";
 import { useEvents } from "@/hooks/use-events";
+import { useLobbyChat } from "@/hooks/use-lobby-chat";
 import { PokerCard } from "./components/poker-card";
 import { PlayerSeat } from "./components/player-seat";
 import { ActionBar } from "./components/action-bar";
@@ -44,10 +45,17 @@ export default function PokerPage() {
     isSittingOut,
     isReady,
     readyCount,
+    acting,
+    lastError,
+    clearError,
   } = usePoker(sessionId);
 
   const mySession = useQuery(api.sessions.getMySession);
   const isHost = mySession?.session?.createdBy === currentUser?._id;
+  const lobbyId = mySession?.session?.lobbyId ?? null;
+  const { messages: chatMessages, send: sendChat } = useLobbyChat(lobbyId);
+  const [chatOpen, setChatOpen] = useState(false);
+  const [chatInput, setChatInput] = useState("");
 
   // Redirect to dashboard when a gameEnded event arrives
   const { events, dismiss } = useEvents();
@@ -152,6 +160,17 @@ export default function PokerPage() {
         </div>
 
         <div className="flex items-center gap-2">
+          <button
+            onClick={() => setChatOpen((o) => !o)}
+            className={`cursor-pointer text-[10px] uppercase tracking-wider rounded-lg px-3 py-2 ring-1 transition-all flex items-center gap-1.5 ${
+              chatOpen
+                ? "text-emerald-400 bg-emerald-500/10 ring-emerald-500/30"
+                : "text-muted-foreground bg-card ring-border hover:text-foreground"
+            }`}
+          >
+            <HugeiconsIcon icon={BubbleChatIcon} size={14} />
+            Chat
+          </button>
           {myPlayer && (
             <div className="bg-card ring-1 ring-border rounded-lg px-3 py-1.5">
               <p className="text-[9px] text-muted-foreground uppercase tracking-wider">
@@ -217,7 +236,31 @@ export default function PokerPage() {
         </motion.div>
       )}
 
-      {/* Table */}
+      {/* Table + action log */}
+      <div className="flex-1 flex gap-4">
+        {/* Action log sidebar */}
+        {state.actionLog && state.actionLog.length > 0 && (
+          <div className="hidden lg:flex flex-col w-44 shrink-0">
+            <p className="text-[9px] uppercase tracking-wider text-muted-foreground mb-1.5">Log</p>
+            <div className="flex-1 overflow-y-auto scrollbar-thin bg-card/50 ring-1 ring-border rounded-lg p-2 space-y-0.5 max-h-[400px]">
+              {state.actionLog.map((entry, i) => (
+                <p
+                  key={i}
+                  className={`text-[10px] leading-relaxed ${
+                    entry.startsWith("---")
+                      ? "text-emerald-400/70 font-medium mt-1"
+                      : entry.startsWith("Showdown")
+                        ? "text-amber-400/70 font-medium mt-1"
+                        : "text-muted-foreground"
+                  }`}
+                >
+                  {entry}
+                </p>
+              ))}
+            </div>
+          </div>
+        )}
+
       <div className="flex-1 flex flex-col items-center justify-center gap-6">
         {/* Players top row */}
         <div className="flex items-end justify-center gap-10 flex-wrap">
@@ -316,6 +359,7 @@ export default function PokerPage() {
             ))}
         </div>
       </div>
+      </div>
 
       {/* Hand complete: results + ready system */}
       <AnimatePresence>
@@ -328,15 +372,26 @@ export default function PokerPage() {
           >
             {/* Result + Ready in a compact row layout */}
             <div className="flex items-center justify-between gap-4">
-              {/* Left: hand result */}
-              <div className="flex items-center gap-2">
-                <span className="text-[10px] uppercase tracking-wider text-muted-foreground">Result</span>
-                {state.winnersLastHand.map((w, i) => (
-                  <span key={i} className="text-sm font-bold text-emerald-400">
-                    +{w.amount}{" "}
-                    <span className="text-[10px] font-normal text-muted-foreground">{w.handName}</span>
-                  </span>
-                ))}
+              {/* Left: hand result with winner cards */}
+              <div className="flex items-center gap-3">
+                {state.winnersLastHand.map((w, i) => {
+                  const winnerPlayer = state.players.find((p) => p.userId === w.userId);
+                  return (
+                    <div key={i} className="flex items-center gap-2">
+                      {winnerPlayer && winnerPlayer.holeCards[0] !== "?" && (
+                        <div className="flex gap-0.5">
+                          {winnerPlayer.holeCards.map((c, ci) => (
+                            <PokerCard key={ci} card={c} size="sm" delay={0} />
+                          ))}
+                        </div>
+                      )}
+                      <div>
+                        <p className="text-sm font-bold text-emerald-400">+{w.amount}</p>
+                        <p className="text-[9px] text-muted-foreground">{w.handName}</p>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
 
               {/* Center: countdown or ready dots */}
@@ -410,12 +465,87 @@ export default function PokerPage() {
           callAmount={callAmount}
           minRaise={minRaise}
           maxRaise={maxRaise > 0 ? maxRaise : 0}
+          totalPot={totalPot}
+          disabled={acting}
           onFold={fold}
           onCheck={check}
           onCall={call}
           onRaise={raise}
         />
       )}
+
+      {/* Chat panel */}
+      <AnimatePresence>
+        {chatOpen && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            className="max-w-4xl w-full mx-auto overflow-hidden"
+          >
+            <div className="bg-card ring-1 ring-border rounded-xl p-3">
+              <div className="max-h-32 overflow-y-auto scrollbar-thin space-y-1.5 mb-2">
+                {chatMessages.length === 0 ? (
+                  <p className="text-[10px] text-muted-foreground text-center py-2">No messages yet</p>
+                ) : (
+                  chatMessages.map((msg, i) => (
+                    <div key={i} className="flex items-baseline gap-1.5">
+                      <span className="text-[10px] font-bold shrink-0" style={{ color: msg.accent }}>{msg.username}</span>
+                      <span className="text-[10px] text-muted-foreground">{msg.text}</span>
+                    </div>
+                  ))
+                )}
+              </div>
+              <div className="flex items-center gap-2">
+                <input
+                  type="text"
+                  value={chatInput}
+                  onChange={(e) => setChatInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && chatInput.trim()) {
+                      sendChat(chatInput.trim());
+                      setChatInput("");
+                    }
+                  }}
+                  placeholder="Type a message..."
+                  className="flex-1 rounded-lg bg-secondary ring-1 ring-border px-2.5 py-1.5 text-[11px] text-foreground placeholder:text-muted-foreground outline-none focus:ring-white/20"
+                />
+                <button
+                  onClick={() => {
+                    if (chatInput.trim()) {
+                      sendChat(chatInput.trim());
+                      setChatInput("");
+                    }
+                  }}
+                  className="cursor-pointer rounded-lg bg-secondary ring-1 ring-border px-2.5 py-1.5 text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  <HugeiconsIcon icon={BubbleChatIcon} size={14} />
+                </button>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Error toast */}
+      <AnimatePresence>
+        {lastError && (
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 10 }}
+            className="fixed bottom-6 left-1/2 -translate-x-1/2 bg-red-500/10 ring-1 ring-red-500/30 rounded-xl px-4 py-2.5 flex items-center gap-3 z-50"
+          >
+            <p className="text-xs text-red-400">{lastError}</p>
+            <button
+              onClick={clearError}
+              className="cursor-pointer text-[10px] text-red-400/60 hover:text-red-400"
+            >
+              dismiss
+            </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

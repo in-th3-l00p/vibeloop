@@ -83,8 +83,10 @@ async function dealNextHand(
 
   // Rotate dealer (skip eliminated and sitting-out)
   let newDealerIndex = (state.dealerIndex + 1) % players.length;
-  while (players[newDealerIndex].folded) {
+  let safety = 0;
+  while (players[newDealerIndex].folded && safety < players.length) {
     newDealerIndex = (newDealerIndex + 1) % players.length;
+    safety++;
   }
 
   // Find SB and BB positions
@@ -149,6 +151,7 @@ async function dealNextHand(
     handNumber: state.handNumber + 1,
     countdownStartedAt: undefined,
     turnDeadline: deadline,
+    actionLog: [],
     lastAction: undefined,
     winnersLastHand: undefined,
   });
@@ -358,6 +361,15 @@ export const playerAction = mutation({
       amount: args.action === "raise" ? args.amount : undefined,
     };
 
+    // Build action log entry
+    const logEntry =
+      args.action === "raise"
+        ? `${user.username} raised ${args.amount}`
+        : args.action === "call"
+          ? `${user.username} called ${highestBet - (state.players[playerIdx].currentBet)}`
+          : `${user.username} ${args.action}ed`;
+    const actionLog = [...(state.actionLog ?? []), logEntry];
+
     // Check if hand is over (only 1 non-folded player)
     if (countActivePlayers(players) === 1) {
       // Award pot to last player standing
@@ -376,6 +388,7 @@ export const playerAction = mutation({
         players,
         pots: [{ amount: 0, eligible: [] }],
         lastAction,
+        actionLog,
         winnersLastHand: [
           {
             userId: winner.userId,
@@ -410,13 +423,14 @@ export const playerAction = mutation({
       (allEqual && args.action !== "raise" && nextIdx === newRoundStart);
 
     if (bettingDone) {
-      await advancePhase(ctx, state._id, state, players, lastAction);
+      await advancePhase(ctx, state._id, state, players, lastAction, actionLog);
     } else {
       const deadline = await scheduleTurnTimer(ctx, args.sessionId);
       await ctx.db.patch(state._id, {
         players,
         currentPlayerIndex: nextIdx === -1 ? state.currentPlayerIndex : nextIdx,
         lastAction,
+        actionLog,
         turnDeadline: deadline,
         roundStartPlayerIndex: newRoundStart,
         lastRaiseAmount:
@@ -440,6 +454,7 @@ async function advancePhase(
   state: any,
   players: PlayerState[],
   lastAction: any,
+  actionLog?: string[],
 ) {
   let { deck, communityCards, phase } = state;
   deck = [...deck];
@@ -513,6 +528,9 @@ async function advancePhase(
       handName: w.handName,
     }));
 
+    const cardNames = communityCards.join(" ");
+    const showdownLog = [...(actionLog ?? []), `Showdown: ${cardNames}`];
+
     await ctx.db.patch(stateId, {
       phase: "handComplete",
       players,
@@ -521,6 +539,7 @@ async function advancePhase(
       pots: [{ amount: 0, eligible: [] }],
       currentPlayerIndex: -1,
       lastAction,
+      actionLog: showdownLog,
       turnDeadline: undefined,
       winnersLastHand,
     });
@@ -531,12 +550,16 @@ async function advancePhase(
     const pots = calculatePots(players);
     const deadline = await scheduleTurnTimer(ctx, state.sessionId);
 
+    const phaseLabel: Record<string, string> = { flop: "Flop", turn: "Turn", river: "River" };
+    const phaseLog = [...(actionLog ?? []), `--- ${phaseLabel[nextPhase] ?? nextPhase} ---`];
+
     await ctx.db.patch(stateId, {
       phase: nextPhase,
       players,
       communityCards,
       deck,
       pots,
+      actionLog: phaseLog,
       currentPlayerIndex: firstToAct,
       lastAction,
       lastRaiseAmount: state.bigBlind,

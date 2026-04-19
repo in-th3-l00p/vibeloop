@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useCallback } from "react";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { useCurrentUser } from "./use-current-user";
@@ -7,6 +8,8 @@ import type { Id } from "@/convex/_generated/dataModel";
 
 export function usePoker(sessionId: Id<"gameSessions"> | null) {
   const { user } = useCurrentUser();
+  const [acting, setActing] = useState(false);
+  const [lastError, setLastError] = useState<string | null>(null);
 
   const state = useQuery(
     api.poker.queries.getPokerState,
@@ -20,6 +23,23 @@ export function usePoker(sessionId: Id<"gameSessions"> | null) {
   const toggleReadyMutation = useMutation(api.poker.mutations.toggleReady);
   const closeGameMutation = useMutation(api.poker.mutations.closePokerGame);
   const initMutation = useMutation(api.poker.mutations.initializePokerGame);
+
+  const guard = useCallback(
+    async (fn: () => Promise<unknown>) => {
+      if (acting) return;
+      setActing(true);
+      setLastError(null);
+      try {
+        await fn();
+      } catch (err: any) {
+        const msg = err?.message ?? err?.data ?? "Action failed";
+        setLastError(msg);
+      } finally {
+        setActing(false);
+      }
+    },
+    [acting],
+  );
 
   const myPlayer = state?.players.find((p) => p.userId === user?._id);
   const isMyTurn =
@@ -67,26 +87,28 @@ export function usePoker(sessionId: Id<"gameSessions"> | null) {
     activePlayerCount: activePlayers.length,
     isReady: myPlayer?.readyForNext ?? false,
     isSittingOut: myPlayer?.sittingOut ?? false,
+    acting,
+    lastError,
+    clearError: () => setLastError(null),
     initialize: (sid: Id<"gameSessions">) =>
-      initMutation({ sessionId: sid }),
+      guard(() => initMutation({ sessionId: sid })),
     fold: () =>
-      sessionId && actionMutation({ sessionId, action: "fold" }),
+      guard(() => sessionId ? actionMutation({ sessionId, action: "fold" }) : Promise.resolve()),
     check: () =>
-      sessionId && actionMutation({ sessionId, action: "check" }),
+      guard(() => sessionId ? actionMutation({ sessionId, action: "check" }) : Promise.resolve()),
     call: () =>
-      sessionId && actionMutation({ sessionId, action: "call" }),
+      guard(() => sessionId ? actionMutation({ sessionId, action: "call" }) : Promise.resolve()),
     raise: (amount: number) =>
-      sessionId &&
-      actionMutation({ sessionId, action: "raise", amount }),
+      guard(() => sessionId ? actionMutation({ sessionId, action: "raise", amount }) : Promise.resolve()),
     nextHand: () =>
-      sessionId && nextHandMutation({ sessionId }),
+      guard(() => sessionId ? nextHandMutation({ sessionId }) : Promise.resolve()),
     leave: () =>
-      sessionId && leaveMutation({ sessionId }),
+      guard(() => sessionId ? leaveMutation({ sessionId }) : Promise.resolve()),
     rejoin: () =>
-      sessionId && rejoinMutation({ sessionId }),
+      guard(() => sessionId ? rejoinMutation({ sessionId }) : Promise.resolve()),
     toggleReady: () =>
-      sessionId && toggleReadyMutation({ sessionId }),
+      guard(() => sessionId ? toggleReadyMutation({ sessionId }) : Promise.resolve()),
     closeGame: () =>
-      sessionId && closeGameMutation({ sessionId }),
+      guard(() => sessionId ? closeGameMutation({ sessionId }) : Promise.resolve()),
   };
 }
