@@ -226,7 +226,10 @@ export default function PokerPage() {
             .map((p) => (
               <PlayerSeat
                 key={p.userId}
-                username={p.userId === currentUser?._id ? "You" : `Seat ${p.seatIndex + 1}`}
+                username={p.username ?? `Seat ${p.seatIndex + 1}`}
+                tag={p.tag}
+                imageUrl={p.imageUrl}
+                cardTheme={p.cardTheme}
                 chips={p.chips}
                 holeCards={p.holeCards}
                 currentBet={p.currentBet}
@@ -291,7 +294,10 @@ export default function PokerPage() {
             .map((p) => (
               <PlayerSeat
                 key={p.userId}
-                username={p.userId === currentUser?._id ? "You" : `Seat ${p.seatIndex + 1}`}
+                username={p.username ?? `Seat ${p.seatIndex + 1}`}
+                tag={p.tag}
+                imageUrl={p.imageUrl}
+                cardTheme={p.cardTheme}
                 chips={p.chips}
                 holeCards={p.holeCards}
                 currentBet={p.currentBet}

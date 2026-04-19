@@ -1,11 +1,16 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import Image from "next/image";
 import { motion } from "motion/react";
 import { PokerCard } from "./poker-card";
+import { getProfileCardById } from "../../lib/theme-utils";
 
 interface PlayerSeatProps {
   username: string;
+  tag?: string;
+  imageUrl?: string;
+  cardTheme?: string;
   chips: number;
   holeCards: string[];
   currentBet: number;
@@ -24,6 +29,9 @@ interface PlayerSeatProps {
 
 export function PlayerSeat({
   username,
+  tag,
+  imageUrl,
+  cardTheme,
   chips,
   holeCards,
   currentBet,
@@ -40,6 +48,7 @@ export function PlayerSeat({
   accent,
 }: PlayerSeatProps) {
   const opacity = folded || eliminated || sittingOut ? "opacity-40" : "opacity-100";
+  const pc = getProfileCardById(cardTheme);
 
   return (
     <motion.div
@@ -62,47 +71,90 @@ export function PlayerSeat({
         )}
       </div>
 
-      {/* Name plate */}
+      {/* Profile card */}
       <div
-        className={`relative rounded-lg px-3 py-1.5 text-center min-w-[80px] transition-all duration-300 ${
+        className={`relative rounded-xl overflow-hidden min-w-[100px] transition-all duration-300 ${
           isCurrentTurn
             ? "ring-2 ring-emerald-400 shadow-[0_0_12px_rgba(52,211,153,0.3)]"
-            : "ring-1 ring-border"
+            : ""
         }`}
         style={{
-          backgroundColor: isSelf ? `${accent}15` : "var(--card)",
+          backgroundColor: pc.nameBg,
+          border: `1px solid ${pc.borderColor}`,
         }}
       >
-        {isDealer && !isHandComplete && (
-          <span className="absolute -top-2 -right-2 w-5 h-5 rounded-full bg-yellow-500 text-black text-[9px] font-bold flex items-center justify-center shadow-md">
-            D
-          </span>
-        )}
-        {isHandComplete && readyForNext && (
-          <span className="absolute -top-2 -right-2 w-5 h-5 rounded-full bg-emerald-500 text-white text-[9px] font-bold flex items-center justify-center shadow-md">
-            ✓
-          </span>
-        )}
-        <p
-          className="text-xs font-bold truncate max-w-[80px]"
+        {/* Banner strip */}
+        <div
+          className="h-5 w-full"
           style={{
-            color: isSelf ? accent : "var(--foreground)",
+            background: `linear-gradient(135deg, ${pc.avatarRing}, ${pc.avatarRing}80)`,
           }}
-        >
-          {username}
-        </p>
-        <p className="text-[10px] text-muted-foreground">
-          {eliminated
-            ? "Out"
-            : sittingOut
-              ? "Sitting Out"
-              : folded
-                ? "Folded"
-                : allIn
-                  ? "ALL IN"
-                  : `${chips.toLocaleString()}`}
-        </p>
-        {isCurrentTurn && turnDeadline && <TurnTimer deadline={turnDeadline} />}
+        />
+
+        <div className="relative px-2.5 pb-2 pt-4">
+          {/* Avatar */}
+          <div
+            className="absolute -top-3.5 left-2.5 size-7 rounded-full overflow-hidden"
+            style={{
+              boxShadow: `0 0 0 2px ${pc.avatarRing}`,
+            }}
+          >
+            {imageUrl ? (
+              <Image src={imageUrl} alt={username} fill className="object-cover" />
+            ) : (
+              <div
+                className="size-full flex items-center justify-center text-[9px] font-bold"
+                style={{ backgroundColor: pc.avatarRing, color: pc.nameColor }}
+              >
+                {username.charAt(0).toUpperCase()}
+              </div>
+            )}
+          </div>
+
+          {/* Badges */}
+          {isDealer && !isHandComplete && (
+            <span className="absolute top-0.5 right-1.5 w-4 h-4 rounded-full bg-yellow-500 text-black text-[8px] font-bold flex items-center justify-center shadow-sm">
+              D
+            </span>
+          )}
+          {isHandComplete && readyForNext && (
+            <span className="absolute top-0.5 right-1.5 w-4 h-4 rounded-full bg-emerald-500 text-white text-[8px] font-bold flex items-center justify-center shadow-sm">
+              ✓
+            </span>
+          )}
+
+          {/* Name + tag */}
+          <p
+            className="text-[11px] font-bold truncate max-w-[90px]"
+            style={{ color: pc.nameColor }}
+          >
+            {username}
+          </p>
+          {tag && (
+            <p
+              className="text-[9px] truncate max-w-[90px]"
+              style={{ color: pc.tagColor }}
+            >
+              @{tag}
+            </p>
+          )}
+
+          {/* Status */}
+          <p className="text-[9px] mt-0.5" style={{ color: pc.descColor }}>
+            {eliminated
+              ? "Out"
+              : sittingOut
+                ? "Sitting Out"
+                : folded
+                  ? "Folded"
+                  : allIn
+                    ? "ALL IN"
+                    : `${chips.toLocaleString()} chips`}
+          </p>
+
+          {/* Turn timer */}
+          {isCurrentTurn && turnDeadline && <TurnTimer deadline={turnDeadline} />}
+        </div>
       </div>
 
       {/* Current bet */}
@@ -124,7 +176,7 @@ export function PlayerSeat({
 
 function TurnTimer({ deadline }: { deadline: number }) {
   const [pct, setPct] = useState(100);
-  const total = 30; // matches TURN_TIMEOUT_MS / 1000
+  const total = 30;
 
   useEffect(() => {
     const tick = () => {

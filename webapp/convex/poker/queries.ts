@@ -1,5 +1,6 @@
 import { v } from "convex/values";
 import { query } from "../_generated/server";
+import { getUserCardTheme } from "../lib/getUserCardTheme";
 
 export const getPokerState = query({
   args: {
@@ -26,14 +27,24 @@ export const getPokerState = query({
     const isShowdown =
       state.phase === "showdown" || state.phase === "handComplete";
 
-    // Filter card visibility
-    const players = state.players.map((p) => ({
-      ...p,
-      holeCards:
-        p.userId === user._id || isShowdown
-          ? p.holeCards
-          : p.holeCards.map(() => "?"),
-    }));
+    // Enrich players with profile data + filter card visibility
+    const players = [];
+    for (const p of state.players) {
+      const playerUser = await ctx.db.get(p.userId);
+      const cardTheme = await getUserCardTheme(ctx, p.userId);
+      players.push({
+        ...p,
+        holeCards:
+          p.userId === user._id || isShowdown
+            ? p.holeCards
+            : p.holeCards.map(() => "?"),
+        username: playerUser?.username ?? "Unknown",
+        tag: playerUser?.tag ?? "",
+        imageUrl: playerUser?.imageUrl ?? "",
+        accent: playerUser?.accent ?? "#a855f7",
+        cardTheme,
+      });
+    }
 
     return {
       sessionId: state.sessionId,
