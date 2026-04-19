@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "motion/react";
 import { HugeiconsIcon } from "@hugeicons/react";
@@ -51,9 +51,12 @@ export default function PokerPage() {
 
   // Redirect to dashboard when a gameEnded event arrives
   const { events, dismiss } = useEvents();
+  const endRedirectingRef = useRef(false);
   useEffect(() => {
+    if (endRedirectingRef.current) return;
     const endEvent = events.find((e) => e.type === "gameEnded");
     if (endEvent) {
+      endRedirectingRef.current = true;
       dismiss(endEvent._id);
       router.push("/dashboard");
     }

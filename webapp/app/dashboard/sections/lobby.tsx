@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import Image from "next/image";
 import { motion } from "motion/react";
 import { HugeiconsIcon } from "@hugeicons/react";
@@ -114,23 +114,45 @@ export function Lobby() {
     startedAt: number;
   } | null>(null);
   const [launchCountdown, setLaunchCountdown] = useState(LAUNCH_DURATION);
+  // Ref guards against double-redirect and re-trigger after dismiss
+  const redirectingRef = useRef(false);
+  const handledEventIdsRef = useRef<Set<string>>(new Set());
 
+  const doRedirect = useCallback(
+    (gameName: string, sessionId: string, eventId: string) => {
+      if (redirectingRef.current) return;
+      redirectingRef.current = true;
+      handledEventIdsRef.current.add(eventId);
+      dismiss(eventId as any);
+      setLaunchEvent(null);
+      const route =
+        gameName === "Texas Hold'em"
+          ? `/dashboard/poker?session=${sessionId}`
+          : `/dashboard`;
+      router.push(route);
+    },
+    [dismiss, router],
+  );
+
+  // Detect new gameStarted events
   useEffect(() => {
+    if (redirectingRef.current) return;
     if (launchEvent) return;
-    const gameStarted = events.find((e) => e.type === "gameStarted");
+
+    const gameStarted = events.find(
+      (e) => e.type === "gameStarted" && !handledEventIdsRef.current.has(e._id),
+    );
     if (!gameStarted) return;
 
     const startedAt: number = gameStarted.payload?.startedAt ?? Date.now();
     const elapsed = (Date.now() - startedAt) / 1000;
 
     if (elapsed >= LAUNCH_DURATION) {
-      // Timer already expired — dismiss and redirect instantly
-      dismiss(gameStarted._id);
-      const route =
-        (gameStarted.payload?.gameName ?? "") === "Texas Hold'em"
-          ? `/dashboard/poker?session=${gameStarted.payload?.sessionId}`
-          : `/dashboard`;
-      router.push(route);
+      doRedirect(
+        gameStarted.payload?.gameName ?? "",
+        gameStarted.payload?.sessionId ?? "",
+        gameStarted._id,
+      );
       return;
     }
 
@@ -141,10 +163,11 @@ export function Lobby() {
       startedAt,
     });
     setLaunchCountdown(Math.ceil(LAUNCH_DURATION - elapsed));
-  }, [events, launchEvent, dismiss, router]);
+  }, [events, launchEvent, doRedirect]);
 
+  // Countdown ticker
   useEffect(() => {
-    if (!launchEvent) return;
+    if (!launchEvent || redirectingRef.current) return;
 
     const tick = () => {
       const elapsed = (Date.now() - launchEvent.startedAt) / 1000;
@@ -152,20 +175,14 @@ export function Lobby() {
       setLaunchCountdown(Math.ceil(remaining));
 
       if (remaining <= 0) {
-        dismiss(launchEvent.eventId as any);
-        const route =
-          launchEvent.gameName === "Texas Hold'em"
-            ? `/dashboard/poker?session=${launchEvent.sessionId}`
-            : `/dashboard`;
-        setLaunchEvent(null);
-        router.push(route);
+        doRedirect(launchEvent.gameName, launchEvent.sessionId, launchEvent.eventId);
       }
     };
 
     tick();
     const interval = setInterval(tick, 200);
     return () => clearInterval(interval);
-  }, [launchEvent, dismiss, router]);
+  }, [launchEvent, doRedirect]);
 
   if (isLoading) return <LobbySkeleton />;
 
