@@ -2,6 +2,7 @@ import { v } from "convex/values";
 import { mutation, query, QueryCtx, MutationCtx } from "./_generated/server";
 import { getUserCardTheme } from "./lib/getUserCardTheme";
 import { Id } from "./_generated/dataModel";
+import { emitToSessionMembers } from "./events";
 
 /** Finish all active game sessions for a lobby and clean up poker state */
 async function cleanupActiveSessions(ctx: MutationCtx, lobbyId: Id<"lobbies">) {
@@ -26,6 +27,12 @@ async function cleanupActiveSessions(ctx: MutationCtx, lobbyId: Id<"lobbies">) {
     await ctx.db.patch(session._id, {
       status: "finished",
       finishedAt: Date.now(),
+    });
+
+    // Emit gameEnded event to all session members
+    await emitToSessionMembers(ctx, session._id, "gameEnded", {
+      sessionId: session._id,
+      gameName: session.gameName,
     });
 
     // Mark all session members with draw result

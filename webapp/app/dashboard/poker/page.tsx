@@ -10,6 +10,7 @@ import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { usePoker } from "@/hooks/use-poker";
 import { useCurrentUser } from "@/hooks/use-current-user";
+import { useEvents } from "@/hooks/use-events";
 import { PokerCard } from "./components/poker-card";
 import { PlayerSeat } from "./components/player-seat";
 import { ActionBar } from "./components/action-bar";
@@ -48,16 +49,15 @@ export default function PokerPage() {
   const mySession = useQuery(api.sessions.getMySession);
   const isHost = mySession?.session?.createdBy === currentUser?._id;
 
-  // Redirect to dashboard if game session ends (state goes null after being loaded)
-  const [hadState, setHadState] = useState(false);
+  // Redirect to dashboard when a gameEnded event arrives
+  const { events, dismiss } = useEvents();
   useEffect(() => {
-    if (state) setHadState(true);
-  }, [state]);
-  useEffect(() => {
-    if (hadState && state === null) {
+    const endEvent = events.find((e) => e.type === "gameEnded");
+    if (endEvent) {
+      dismiss(endEvent._id);
       router.push("/dashboard");
     }
-  }, [hadState, state, router]);
+  }, [events, dismiss, router]);
 
   // Countdown timer
   const countdownStartedAt = state?.countdownStartedAt;

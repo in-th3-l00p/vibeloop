@@ -17,6 +17,7 @@ import {
 
 import { MutationCtx } from "../_generated/server";
 import { Doc, Id } from "../_generated/dataModel";
+import { emitToSessionMembers } from "../events";
 
 const STARTING_CHIPS = 1000;
 const SMALL_BLIND = 10;
@@ -808,5 +809,11 @@ export const closePokerGame = mutation({
         }
       }
     }
+
+    // Emit gameEnded event to all session members
+    await emitToSessionMembers(ctx, args.sessionId, "gameEnded", {
+      sessionId: args.sessionId,
+      gameName: session.gameName,
+    });
   },
 });

@@ -2,6 +2,7 @@ import { v } from "convex/values";
 import { mutation, query, QueryCtx } from "./_generated/server";
 import { api } from "./_generated/api";
 import { Id } from "./_generated/dataModel";
+import { emitToSessionMembers } from "./events";
 
 async function getCurrentUser(ctx: QueryCtx) {
   const identity = await ctx.auth.getUserIdentity();
@@ -394,6 +395,12 @@ export const createAndStartForLobby = mutation({
     await ctx.db.patch(sessionId, {
       status: "playing",
       startedAt: Date.now(),
+    });
+
+    // Emit gameStarted event to all session members
+    await emitToSessionMembers(ctx, sessionId, "gameStarted", {
+      sessionId,
+      gameName: args.gameName,
     });
 
     return sessionId;

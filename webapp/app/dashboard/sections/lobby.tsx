@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Image from "next/image";
 import { motion } from "motion/react";
 import { HugeiconsIcon } from "@hugeicons/react";
@@ -15,6 +15,7 @@ import { useDashboard } from "../dashboard-context";
 import { useLobby } from "@/hooks/use-lobby";
 import { useLobbyChat } from "@/hooks/use-lobby-chat";
 import { useCurrentUser } from "@/hooks/use-current-user";
+import { useEvents } from "@/hooks/use-events";
 import { ScrollRow } from "../components/ui/scroll-row";
 import { StatusDot, StatusLabel } from "../components/ui/status-indicator";
 import { InviteDialog } from "../components/invite-dialog";
@@ -102,6 +103,44 @@ export function Lobby() {
     createNew(newLobbyName.trim() || undefined);
     setNewLobbyName("");
   }
+
+  // Event-driven game launch dialog
+  const { events, dismiss } = useEvents();
+  const [launchEvent, setLaunchEvent] = useState<{
+    eventId: string;
+    gameName: string;
+    sessionId: string;
+  } | null>(null);
+  const [launchCountdown, setLaunchCountdown] = useState(5);
+
+  useEffect(() => {
+    if (launchEvent) return; // already showing a launch dialog
+    const gameStarted = events.find((e) => e.type === "gameStarted");
+    if (gameStarted) {
+      setLaunchEvent({
+        eventId: gameStarted._id,
+        gameName: gameStarted.payload?.gameName ?? "Game",
+        sessionId: gameStarted.payload?.sessionId ?? "",
+      });
+      setLaunchCountdown(5);
+    }
+  }, [events, launchEvent]);
+
+  useEffect(() => {
+    if (!launchEvent) return;
+    if (launchCountdown <= 0) {
+      dismiss(launchEvent.eventId as any);
+      const route =
+        launchEvent.gameName === "Texas Hold'em"
+          ? `/dashboard/poker?session=${launchEvent.sessionId}`
+          : `/dashboard`;
+      setLaunchEvent(null);
+      router.push(route);
+      return;
+    }
+    const timer = setTimeout(() => setLaunchCountdown((c) => c - 1), 1000);
+    return () => clearTimeout(timer);
+  }, [launchEvent, launchCountdown, dismiss, router]);
 
   if (isLoading) return <LobbySkeleton />;
 
@@ -408,6 +447,38 @@ export function Lobby() {
       {selected && (
         <PlayerDialog player={selected.player} userId={selected.userId} open={!!selected} onOpenChange={(v) => { if (!v) setSelected(null); }} />
       )}
+
+      {/* Event-driven game launch dialog — unclosable */}
+      <Dialog open={!!launchEvent} onOpenChange={() => {}}>
+        <DialogContent
+          className="sm:max-w-xs !p-0 gap-0 overflow-hidden [&>button]:hidden"
+          onPointerDownOutside={(e) => e.preventDefault()}
+          onEscapeKeyDown={(e) => e.preventDefault()}
+        >
+          <DialogHeader className="sr-only">
+            <DialogTitle>Starting {launchEvent?.gameName}</DialogTitle>
+          </DialogHeader>
+          <div className="h-24 w-full flex items-center justify-center bg-gradient-to-br from-emerald-800 to-emerald-950">
+            <span className="text-4xl drop-shadow-lg">♠️</span>
+          </div>
+          <div className="px-5 py-5 flex flex-col items-center gap-3">
+            <p className="text-base font-bold text-foreground">
+              {launchEvent?.gameName}
+            </p>
+            <p className="text-xs text-muted-foreground">
+              Game starting...
+            </p>
+            <motion.div
+              key={launchCountdown}
+              initial={{ scale: 1.3, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              className="text-3xl font-bold font-mono text-emerald-400"
+            >
+              {launchCountdown}
+            </motion.div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

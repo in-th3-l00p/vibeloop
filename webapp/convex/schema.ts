@@ -182,6 +182,12 @@ export default defineSchema({
     lastSyncedAt: v.number(),
   }).index("by_contractAddress", ["contractAddress"]),
 
+  userEvents: defineTable({
+    userId: v.id("users"),
+    type: v.string(),
+    payload: v.any(),
+  }).index("by_userId", ["userId"]),
+
   pokerState: defineTable({
     sessionId: v.id("gameSessions"),
     phase: v.union(

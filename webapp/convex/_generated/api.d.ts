@@ -11,6 +11,7 @@
 import type * as chainSync from "../chainSync.js";
 import type * as chat from "../chat.js";
 import type * as crons from "../crons.js";
+import type * as events from "../events.js";
 import type * as friends from "../friends.js";
 import type * as gameStats from "../gameStats.js";
 import type * as games from "../games.js";
@@ -41,6 +42,7 @@ declare const fullApi: ApiFromModules<{
   chainSync: typeof chainSync;
   chat: typeof chat;
   crons: typeof crons;
+  events: typeof events;
   friends: typeof friends;
   gameStats: typeof gameStats;
   games: typeof games;
