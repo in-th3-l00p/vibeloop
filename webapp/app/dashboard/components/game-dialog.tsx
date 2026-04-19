@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import Image from "next/image";
-import { useRouter } from "next/navigation";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { GameController01Icon } from "@hugeicons/core-free-icons";
 import { useMutation } from "convex/react";
@@ -26,7 +25,6 @@ export function GameDialog({
   const { glowEffects } = settings;
   const { stats } = useGameStats();
   const { myLobby, isHost, memberCount } = useLobby();
-  const router = useRouter();
   const [starting, setStarting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const createAndStart = useMutation(api.sessions.createAndStartForLobby);
@@ -133,9 +131,10 @@ export function GameDialog({
 
                 if (game.name === "Texas Hold'em") {
                   await initPoker({ sessionId });
-                  onOpenChange(false);
-                  router.push(`/dashboard/poker?session=${sessionId}`);
                 }
+                // Close game dialog — the lobby's event-driven launch dialog
+                // handles the countdown and redirect for all players
+                onOpenChange(false);
               } catch (err: any) {
                 setError(err.message ?? "Failed to start game");
               } finally {
